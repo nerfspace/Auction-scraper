@@ -1,0 +1,11 @@
+# Render.com Deployment Configuration
+
+# Build and Start Commands
+
+build:
+  commands:
+    - npm install
+
+start:
+  commands:
+    - npm start
