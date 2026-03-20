@@ -1,6 +1,14 @@
 const express = require('express');
 const app = express();
 
+// Home route
+app.get('/', (req, res) => {
+    res.status(200).json({ 
+        message: 'Auction Scraper API', 
+        endpoints: ['/health', '/scan', '/opportunities']
+    });
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.status(200).send('OK');
