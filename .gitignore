@@ -1,0 +1,31 @@
+# Node.js
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+
+# Thumbnails
+._* 
+
+# Files that might be created by editors
+*~
+*.swp
+*~
+.swp
+.*.swp
+*.lock
+
+# NPM log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
