@@ -20,6 +20,22 @@
                 placeholder="Search for items (e.g., iPhone, laptop, gaming console)"
                 onkeypress="handleEnter(event)"
             >
+        <div class="category-section">
+            <h3>📂 Quick Category Scan</h3>
+            <select id="categorySelect">
+                <option value="">-- Select a Category --</option>
+                <option value="Electronics">Electronics</option>
+                <option value="Fashion">Fashion</option>
+                <option value="Home & Garden">Home & Garden</option>
+                <option value="Sports">Sports</option>
+                <option value="Collectibles">Collectibles</option>
+                <option value="Toys">Toys</option>
+                <option value="Books">Books</option>
+            </select>
+            <button onclick="scanCategory()">Scan Category</button>
+        </div>
+
+            
             <button onclick="searchAuctions()">Search Deals</button>
         </div>
 
