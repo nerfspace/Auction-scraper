@@ -73,14 +73,14 @@ async function searchAuctions(query) {
         }
 
         return data.itemSummaries.map(item => ({
-            title: item.title,
-            price: item.price?.value || 0,
-            condition: item.condition || 'Unknown',
-            itemUrl: item.itemWebUrl,
-            itemId: item.itemId,
-            bidCount: item.bidCount || 0,
-            estimatedValue: item.price?.value || 0
-        }));
+    title: item.title,
+    price: parseFloat(item.price?.value) || 0,
+    condition: item.condition || 'Unknown',
+    itemUrl: item.itemWebUrl,
+    itemId: item.itemId,
+    bidCount: item.bidCount || 0,
+    estimatedValue: parseFloat(item.price?.value) || 0
+}));
 
     } catch (error) {
         console.error('eBay API Error:', error);
