@@ -1,6 +1,9 @@
 const express = require('express');
 const app = express();
 const crypto = require('crypto');
+const mongoose = require('mongoose');
+const rateLimit = require('express-rate-limit');
+require('dotenv').config();
 
 app.use(express.json());
 app.use(express.text());
@@ -9,6 +12,47 @@ app.use(express.text());
 const ebayService = require("./services/ebayService");
 const valuationService = require("./services/valuationService");
 const profitCalculator = require("./utils/profitCalculator");
+const Listing = require("./models/Listing");
+const listingsRouter = require("./routes/listings");
+
+// ----------------------
+// DATABASE CONNECTION
+// ----------------------
+const MONGODB_URI = process.env.MONGODB_URI;
+if (MONGODB_URI) {
+  mongoose.connect(MONGODB_URI)
+    .then(() => console.log('✅ Connected to MongoDB'))
+    .catch(err => console.error('❌ MongoDB connection error:', err));
+} else {
+  console.warn('⚠️  MONGODB_URI not set – database features disabled');
+}
+
+// ----------------------
+// API ROUTES
+// ----------------------
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use('/api/listings', apiLimiter, listingsRouter);
+
+// GET /api/deals - Retrieve only profitable deals (profit > 20, roi > 0.5)
+app.get('/api/deals', apiLimiter, async (req, res) => {
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(503).json({ error: 'Database not connected' });
+  }
+  try {
+    const deals = await Listing.find({ profit: { $gt: 20 }, roi: { $gt: 0.5 } })
+      .sort({ profit: -1 });
+    res.json({ success: true, count: deals.length, data: deals });
+  } catch (error) {
+    console.error('GET /api/deals error:', error);
+    res.status(500).json({ error: 'Failed to retrieve deals' });
+  }
+});
 
 // ----------------------
 // HEALTH CHECK
@@ -97,6 +141,18 @@ app.get("/scan", async (req, res) => {
 
     const auctions = await ebayService.searchAuctions(query);
 
+    // Persist results to database when MongoDB is connected
+    if (mongoose.connection.readyState === 1) {
+      const saveOps = auctions.map(item =>
+        Listing.findOneAndUpdate(
+          { itemId: item.itemId },
+          { $set: { ...item, source: 'eBay' } },
+          { upsert: true, new: true, runValidators: true }
+        ).catch(err => console.error('Failed to save listing:', err))
+      );
+      await Promise.all(saveOps);
+    }
+
     res.json({
       success: true,
       count: auctions.length,
@@ -143,6 +199,18 @@ app.get("/opportunities", async (req, res) => {
 
     // 5. Sort best first
     deals.sort((a, b) => b.profit - a.profit);
+
+    // 6. Persist deals to database when MongoDB is connected
+    if (mongoose.connection.readyState === 1) {
+      const saveOps = withProfit.map(item =>
+        Listing.findOneAndUpdate(
+          { itemId: item.itemId },
+          { $set: { ...item, source: 'eBay' } },
+          { upsert: true, new: true, runValidators: true }
+        ).catch(err => console.error('Failed to save opportunity:', err))
+      );
+      await Promise.all(saveOps);
+    }
 
     res.json({
       success: true,
