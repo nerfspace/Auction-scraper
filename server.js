@@ -44,10 +44,18 @@ app.get("/ebay-notification", (req, res) => {
   console.log("📬 eBay GET Notification received");
   console.log("Query params:", req.query);
   
-  res.status(200).json({
-    statusCode: 200,
-    verificationToken: "auction-scraper-ebay-compliance-verification-token-2026"
-  });
+  const challengeCode = req.query.challenge_code;
+  
+  if (challengeCode) {
+    console.log("✅ Challenge code received:", challengeCode);
+    // eBay expects us to echo back the challenge code
+    res.status(200).send(challengeCode);
+  } else {
+    res.status(200).json({
+      statusCode: 200,
+      verificationToken: "auction-scraper-ebay-compliance-verification-token-2026"
+    });
+  }
 });
 
 // ----------------------
