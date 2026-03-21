@@ -157,7 +157,38 @@ app.get("/opportunities", async (req, res) => {
     res.status(500).json({ error: "Failed to analyze opportunities" });
   }
 });
+// ----------------------
+// /ebay-notification → Marketplace Account Deletion Compliance
+// ----------------------
+app.post("/ebay-notification", (req, res) => {
+  try {
+    // Log the notification
+    console.log("📬 eBay Notification received:", {
+      timestamp: new Date().toISOString(),
+      body: req.body,
+      headers: req.headers
+    });
 
+    // Respond with 200 OK to acknowledge receipt
+    res.status(200).json({
+      statusCode: 200,
+      statusMessage: "Received"
+    });
+  } catch (error) {
+    console.error("Notification Error:", error);
+    res.status(200).json({ 
+      statusCode: 200,
+      statusMessage: "Received"
+    });
+  }
+});
+
+app.get("/ebay-notification", (req, res) => {
+  res.status(200).json({
+    statusCode: 200,
+    verificationToken: "auction-scraper-ebay-compliance-verification-token-2026"
+  });
+});
 
 // ----------------------
 const PORT = 3000;
