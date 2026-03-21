@@ -20,26 +20,6 @@ app.get("/", (req, res) => {
 // ----------------------
 // /ebay-notification → Marketplace Account Deletion Compliance
 // ----------------------
-app.post("/ebay-notification", (req, res) => {
-  try {
-    console.log("📬 eBay POST Notification received");
-    console.log("Body:", JSON.stringify(req.body));
-    console.log("Headers:", req.headers);
-    
-    // eBay expects a 200 response with verificationToken in JSON
-    res.status(200).json({
-      statusCode: 200,
-      verificationToken: "auction-scraper-ebay-compliance-verification-token-2026"
-    });
-  } catch (error) {
-    console.error("POST Notification Error:", error);
-    res.status(200).json({ 
-      statusCode: 200,
-      verificationToken: "auction-scraper-ebay-compliance-verification-token-2026"
-    });
-  }
-});
-
 app.get("/ebay-notification", (req, res) => {
   console.log("📬 eBay GET Notification received");
   console.log("Query params:", req.query);
@@ -48,7 +28,25 @@ app.get("/ebay-notification", (req, res) => {
   
   if (challengeCode) {
     console.log("✅ Challenge code received:", challengeCode);
-    // eBay expects us to echo back the challenge code
+    res.set('Content-Type', 'text/plain');
+    res.status(200).send(challengeCode);
+  } else {
+    res.status(200).json({
+      statusCode: 200,
+      verificationToken: "auction-scraper-ebay-compliance-verification-token-2026"
+    });
+  }
+});
+
+app.post("/ebay-notification", (req, res) => {
+  console.log("📬 eBay POST Notification received");
+  console.log("Body:", JSON.stringify(req.body));
+  
+  const challengeCode = req.body?.challengeCode || req.query?.challenge_code;
+  
+  if (challengeCode) {
+    console.log("✅ Challenge code received:", challengeCode);
+    res.set('Content-Type', 'text/plain');
     res.status(200).send(challengeCode);
   } else {
     res.status(200).json({
