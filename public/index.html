@@ -3,11 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auction Arbitrage Engine</title>
     <link rel="stylesheet" href="styles.css">
-    <title>Auction Scraper</title>
 </head>
 <body>
-    <h1>Welcome to the Auction Scraper</h1>
+    <div class="container">
+        <header>
+            <h1>🔍 Auction Arbitrage Engine</h1>
+            <p>Find profitable deals on eBay auctions</p>
+        </header>
+
+        <div class="search-section">
+            <input 
+                type="text" 
+                id="searchInput" 
+                placeholder="Search for items (e.g., iPhone, laptop, gaming console)"
+                onkeypress="handleEnter(event)"
+            >
+            <button onclick="searchAuctions()">Search Deals</button>
+        </div>
+
+        <div id="loadingSpinner" class="spinner hidden"></div>
+
+        <div id="stats" class="stats hidden">
+            <div class="stat-card">
+                <h3>Scanned</h3>
+                <p id="scannedCount">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>Profitable Deals</h3>
+                <p id="dealsCount">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>Best Profit</h3>
+                <p id="bestProfit">$0</p>
+            </div>
+        </div>
+
+        <div id="results" class="results hidden">
+            <h2>💰 Profitable Opportunities</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Item Title</th>
+                        <th>Current Bid</th>
+                        <th>Est. Value</th>
+                        <th>Profit</th>
+                        <th>ROI %</th>
+                        <th>Condition</th>
+                        <th>Bids</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsTable"></tbody>
+            </table>
+        </div>
+
+        <div id="error" class="error hidden"></div>
+        <div id="noResults" class="no-results hidden">
+            <p>No profitable deals found. Try a different search!</p>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>
