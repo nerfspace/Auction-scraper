@@ -138,10 +138,18 @@ app.get("/opportunities", async (req, res) => {
       };
     });
 
-    // 4. Filter only GOOD deals
-    const deals = withProfit.filter(item =>
-  item.profit > 5 && item.roi > 0
-);
+    // 4. Show ALL deals temporarily for testing
+const deals = withProfit.map(item => ({
+    ...item,
+    profit: item.profit || 0,
+    roi: item.roi || 0
+}));
+
+console.log('Total scanned:', auctions.length);
+console.log('After analysis:', analyzed.length);
+console.log('With profit calc:', withProfit.length);
+console.log('Final deals:', deals.length);
+console.log('Sample deal:', deals[0]);
 
     // 5. Sort best first
     deals.sort((a, b) => b.profit - a.profit);
