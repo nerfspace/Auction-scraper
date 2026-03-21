@@ -1,6 +1,6 @@
 require('dotenv').config();
 
-const EBAY_API_ENDPOINT = 'https://api.ebay.com/buy/browse/v1/item_search';
+const EBAY_API_ENDPOINT = 'https://api.sandbox.ebay.com/buy/browse/v1/item_search';
 const APP_ID = process.env.EBAY_APP_ID;
 
 function searchAuctions(query) {
