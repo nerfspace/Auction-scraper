@@ -46,17 +46,23 @@ function displayResults(deals) {
     tbody.innerHTML = '';
 
     deals.forEach(deal => {
+        const itemUrl = deal.itemUrl || '#';
+        const title = deal.title || 'Unknown Item';
+        
         const row = `<tr>
-            <td>${deal.title}</td>
-            <td>$${deal.price.toFixed(2)}</td>
-            <td>$${deal.estimatedValue.toFixed(2)}</td>
-            <td style="color: green; font-weight: bold;">$${deal.profit.toFixed(2)}</td>
-            <td>${deal.roi.toFixed(1)}%</td>
-            <td>${deal.condition}</td>
-            <td>${deal.bidCount}</td>
+            <td><a href="${itemUrl}" target="_blank" rel="noopener noreferrer" style="color: #667eea; text-decoration: none; font-weight: 500; cursor: pointer;">${title}</a></td>
+            <td>$${(deal.price || 0).toFixed(2)}</td>
+            <td>$${(deal.estimatedValue || 0).toFixed(2)}</td>
+            <td style="color: green; font-weight: bold;">$${(deal.profit || 0).toFixed(2)}</td>
+            <td>${(deal.roi || 0).toFixed(1)}%</td>
+            <td>${deal.condition || 'Unknown'}</td>
+            <td>${deal.bidCount || 0}</td>
         </tr>`;
         tbody.innerHTML += row;
     });
+
+    document.getElementById('results').classList.remove('hidden');
+}
 
     document.getElementById('results').classList.remove('hidden');
 }
