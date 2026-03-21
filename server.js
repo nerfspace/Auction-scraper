@@ -1,8 +1,10 @@
 const express = require('express');
 const app = express();
 const crypto = require('crypto');
+const path = require('path');
 
 app.use(express.json());
+app.use(express.static('public'));
 app.use(express.text());
 
 // Import services
@@ -14,7 +16,7 @@ const profitCalculator = require("./utils/profitCalculator");
 // HEALTH CHECK
 // ----------------------
 app.get("/", (req, res) => {
-  res.send("Auction Arbitrage Engine Running");
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // ----------------------
