@@ -1,14 +1,33 @@
 const express = require('express');
 const app = express();
 
+const crypto = require('crypto');
+
 app.all("/notification", (req, res) => {
-  console.log("📬 eBay Notification (alternate) received");
-  const challengeCode = req.query.challenge_code || req.body?.challengeCode;
+  console.log("📬 eBay Notification received");
+  
+  const challengeCode = req.query.challenge_code;
+  const endpoint = 'https://auction-scraper-tey5.onrender.com/notification';
+  const verificationToken = 'auction-scraper-ebay-compliance-verification-token-2026';
   
   if (challengeCode) {
-    res.type('text/plain').status(200).send(challengeCode);
+    console.log("✅ Challenge code received:", challengeCode);
+    
+    // Hash: challengeCode + verificationToken + endpoint (in order)
+    const hash = crypto.createHash('sha256');
+    hash.update(challengeCode);
+    hash.update(verificationToken);
+    hash.update(endpoint);
+    const responseHash = hash.digest('hex');
+    
+    console.log("✅ Sending challenge response:", responseHash);
+    res.set('Content-Type', 'application/json');
+    res.status(200).json({
+      challengeResponse: responseHash
+    });
   } else {
-    res.status(200).json({ statusCode: 200, verificationToken: "auction-scraper-ebay-compliance-verification-token-2026" });
+    // Normal notification acknowledgment
+    res.status(200).json({ statusCode: 200 });
   }
 });
 
