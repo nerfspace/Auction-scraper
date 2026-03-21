@@ -1,40 +1,47 @@
-// ebayService.js
-
-const response = await fetch(url);
+require('dotenv').config();
 
 const EBAY_API_ENDPOINT = 'https://api.ebay.com/buy/browse/v1/item_search';
-const APP_ID = 'YOUR_APP_ID'; // Replace with your eBay App ID
+const APP_ID = process.env.EBAY_APP_ID;
 
-async function searchAuctions(query) {
-    const response = await fetch(`${EBAY_API_ENDPOINT}?q=${encodeURIComponent(query)}&limit=10`, {
+function searchAuctions(query) {
+    return fetch(`${EBAY_API_ENDPOINT}?q=${encodeURIComponent(query)}&limit=10`, {
         method: 'GET',
         headers: {
-            'Authorization': `Bearer ${APP_ID}`
+            'Authorization': `Bearer ${APP_ID}`,
+            'Content-Type': 'application/json'
         }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Error fetching auction data');
+        }
+        return response.json();
+    })
+    .then(data => data.itemSummaries || [])
+    .catch(error => {
+        console.error('eBay API Error:', error);
+        return [];
     });
-    
-    if (!response.ok) {
-        throw new Error('Error fetching auction data');
-    }
-
-    const data = await response.json();
-    return data; // Returns auction data relevant to the search
 }
 
-async function getAuctionDetails(itemId) {
-    const response = await fetch(`https://api.ebay.com/buy/browse/v1/item/${itemId}`, {
+function getAuctionDetails(itemId) {
+    return fetch(`https://api.ebay.com/buy/browse/v1/item/${itemId}`, {
         method: 'GET',
         headers: {
-            'Authorization': `Bearer ${APP_ID}`
+            'Authorization': `Bearer ${APP_ID}`,
+            'Content-Type': 'application/json'
         }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Error fetching auction details');
+        }
+        return response.json();
+    })
+    .catch(error => {
+        console.error('eBay API Error:', error);
+        return null;
     });
-    
-    if (!response.ok) {
-        throw new Error('Error fetching auction details');
-    }
-
-    const data = await response.json();
-    return data; // Returns detailed auction information
 }
 
 module.exports = { searchAuctions, getAuctionDetails };
