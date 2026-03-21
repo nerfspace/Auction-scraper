@@ -140,7 +140,7 @@ app.get("/opportunities", async (req, res) => {
 
     // 4. Filter only GOOD deals
     const deals = withProfit.filter(item =>
-  item.profit > 20 && item.roi > 0.5
+  item.profit > 5 && item.roi > 0
 );
 
     // 5. Sort best first
