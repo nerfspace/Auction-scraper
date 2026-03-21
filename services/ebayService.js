@@ -1,46 +1,45 @@
 require('dotenv').config();
 
-function searchAuctions(query) {
-    // Mock eBay data for testing - mimics real API response
-    const mockAuctions = [
-        {
-            title: `Apple iPhone 12 ${query}`,
-            price: 450,
-            condition: 'Used',
-            estimatedValue: 650,
-            bidCount: 5
-        },
-        {
-            title: `Apple iPhone 13 ${query}`,
-            price: 520,
-            condition: 'Like New',
-            estimatedValue: 850,
-            bidCount: 12
-        },
-        {
-            title: `Apple iPhone 11 ${query}`,
-            price: 380,
-            condition: 'Good',
-            estimatedValue: 550,
-            bidCount: 3
-        },
-        {
-            title: `Apple iPhone SE ${query}`,
-            price: 290,
-            condition: 'Used',
-            estimatedValue: 420,
-            bidCount: 8
-        },
-        {
-            title: `Apple iPhone X ${query}`,
-            price: 400,
-            condition: 'Fair',
-            estimatedValue: 500,
-            bidCount: 2
-        }
-    ];
+const EBAY_API_ENDPOINT = 'https://api.ebay.com/buy/browse/v1/item_summary/search';
+const AUTH_TOKEN = process.env.EBAY_AUTH_TOKEN;
 
-    return Promise.resolve(mockAuctions);
+async function searchAuctions(query) {
+    try {
+        const response = await fetch(`${EBAY_API_ENDPOINT}?q=${encodeURIComponent(query)}&limit=20&filter=buyingOptions:{AUCTION}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${AUTH_TOKEN}`,
+                'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            console.error('eBay API Error:', response.status, response.statusText);
+            return [];
+        }
+
+        const data = await response.json();
+        
+        // Transform eBay API response to our format
+        if (!data.itemSummaries || data.itemSummaries.length === 0) {
+            return [];
+        }
+
+        return data.itemSummaries.map(item => ({
+            title: item.title,
+            price: item.price?.value || 0,
+            condition: item.condition || 'Unknown',
+            itemUrl: item.itemWebUrl,
+            itemId: item.itemId,
+            bidCount: item.bidCount || 0,
+            estimatedValue: item.price?.value || 0
+        }));
+
+    } catch (error) {
+        console.error('eBay API Error:', error);
+        return [];
+    }
 }
 
 module.exports = { searchAuctions };
