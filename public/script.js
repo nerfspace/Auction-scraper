@@ -64,9 +64,6 @@ function displayResults(deals) {
     document.getElementById('results').classList.remove('hidden');
 }
 
-    document.getElementById('results').classList.remove('hidden');
-}
-
 function showSpinner(show) {
     document.getElementById('loadingSpinner').classList.toggle('hidden', !show);
 }
@@ -92,6 +89,7 @@ function handleEnter(event) {
         searchAuctions();
     }
 }
+
 function scanCategory() {
     const category = document.getElementById('categorySelect').value;
     
@@ -100,7 +98,6 @@ function scanCategory() {
         return;
     }
 
-    // Use the selected category as the search query
     document.getElementById('searchInput').value = category;
     searchAuctions();
 }
