@@ -1,6 +1,6 @@
 require('dotenv').config();
 
-const EBAY_API_ENDPOINT = 'https://api.sandbox.ebay.com/buy/browse/v1/item_search';
+const EBAY_API_ENDPOINT = 'https://api.ebay.com';
 const AUTH_TOKEN = process.env.EBAY_AUTH_TOKEN;
 
 function searchAuctions(query) {
@@ -27,7 +27,7 @@ function searchAuctions(query) {
 }
 
 function getAuctionDetails(itemId) {
-    return fetch(`https://api.sandbox.ebay.com/buy/browse/v1/item/${itemId}`, {
+    return fetch(`https://api.ebay.com`, {
         method: 'GET',
         headers: {
             'Authorization': `Bearer ${AUTH_TOKEN}`,
