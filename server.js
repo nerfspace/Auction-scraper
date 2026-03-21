@@ -41,7 +41,40 @@ app.get("/scan", async (req, res) => {
     res.status(500).json({ error: "Failed to scan auctions" });
   }
 });
+// ----------------------
+// /debug → Check eBay API raw response
+// ----------------------
+app.get("/debug", async (req, res) => {
+  try {
+    const { query } = req.query;
+    
+    if (!query) {
+      return res.status(400).json({ error: "Missing search query" });
+    }
 
+    const response = await fetch(`https://api.sandbox.ebay.com/buy/browse/v1/item_search?q=${encodeURIComponent(query)}&limit=10`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${process.env.EBAY_AUTH_TOKEN}`,
+        'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const data = await response.json();
+    
+    res.json({
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+      body: data
+    });
+
+  } catch (error) {
+    console.error("DEBUG ERROR:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // ----------------------
 // /opportunities → filtered profitable deals
