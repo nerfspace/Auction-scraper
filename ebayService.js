@@ -1,36 +1,50 @@
-const axios = require('axios');
 require('dotenv').config();
 
-const ebayService = {
-    search: async (query) => {
-        const appId = process.env.EBAY_APP_ID;
-        const findingApiUrl = `https://svcs.ebay.com/services/search/FindingService/v1`;
+const EBAY_API_ENDPOINT = 'https://api.sandbox.ebay.com/buy/browse/v1/item_search';
+const AUTH_TOKEN = process.env.EBAY_AUTH_TOKEN;
 
-        const params = {
-            'OPERATION-NAME': 'findItemsAdvanced',
-            'SERVICE-VERSION': '1.13.0',
-            'SECURITY-APPNAME': appId,
-            'keywords': query,
-            'paginationInput.entriesPerPage': 10,
-            'outputSelector': 'searchResult.item(title, sellingStatus.currentPrice, sellingStatus.bidCount, sellingStatus.timeLeft)'
-        };
-
-        try {
-            const response = await axios.get(findingApiUrl, { params });
-            const items = response.data.findItemsAdvancedResponse[0].searchResult[0].item || [];
-
-            return items.map(item => ({
-                title: item.title[0],
-                currentBid: item.sellingStatus[0].currentPrice[0].__value__,
-                estimatedValue: item.sellingStatus[0].estimatedValue ? item.sellingStatus[0].estimatedValue[0].__value__ : null,
-                bidCount: item.sellingStatus[0].bidCount[0],
-                timeRemaining: item.sellingStatus[0].timeLeft[0]
-            }));
-        } catch (error) {
-            console.error('Error fetching data from eBay API:', error);
-            throw new Error('Unable to fetch eBay data');
+function searchAuctions(query) {
+    return fetch(`${EBAY_API_ENDPOINT}?q=${encodeURIComponent(query)}&limit=10`, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${AUTH_TOKEN}`,
+            'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
+            'Content-Type': 'application/json'
         }
-    }
-};
+    })
+    .then(response => {
+        if (!response.ok) {
+            console.error('eBay API Error:', response.status, response.statusText);
+            throw new Error('Error fetching auction data');
+        }
+        return response.json();
+    })
+    .then(data => data.itemSummaries || [])
+    .catch(error => {
+        console.error('eBay API Error:', error);
+        return [];
+    });
+}
 
-module.exports = ebayService;
+function getAuctionDetails(itemId) {
+    return fetch(`https://api.sandbox.ebay.com/buy/browse/v1/item/${itemId}`, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${AUTH_TOKEN}`,
+            'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Error fetching auction details');
+        }
+        return response.json();
+    })
+    .catch(error => {
+        console.error('eBay API Error:', error);
+        return null;
+    });
+}
+
+module.exports = { searchAuctions, getAuctionDetails };
