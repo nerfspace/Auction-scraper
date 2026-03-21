@@ -1,1 +1,88 @@
-// JavaScript functions for auction handling\n\n// Function to perform a search on opportunities\nasync function searchAuctions() {\n    try {\n        showLoadingSpinner();\n        const response = await fetch('/opportunities');\n        if (!response.ok) throw new Error('Network response was not ok');\n\n        const data = await response.json();\n        updateStats(data);\n        populateResultsTable(data.results);\n    } catch (error) {\n        showError(error.message);\n    } finally {\n        hideLoadingSpinner();\n    }\n}\n\n// Function to handle Enter key detection\nfunction handleEnter(event) {\n    if (event.key === 'Enter') {\n        searchAuctions();\n    }\n}\n\n// Function to display loading spinner\nfunction showLoadingSpinner() {\n    document.getElementById('loadingSpinner').style.display = 'block';\n}\n\n// Function to hide loading spinner\nfunction hideLoadingSpinner() {\n    document.getElementById('loadingSpinner').style.display = 'none';\n}\n\n// Function to show error message\nfunction showError(message) {\n    const errorMessage = document.getElementById('errorMessage');\n    errorMessage.textContent = message;\n    errorMessage.style.display = 'block';\n}\n\n// Function to populate stats\nfunction updateStats(data) {\n    document.getElementById('scannedCount').textContent = data.scannedCount;\n    document.getElementById('dealsCount').textContent = data.dealsCount;\n    document.getElementById('bestProfit').textContent = formatCurrency(data.bestProfit);\n}\n\n// Function to populate results table\nfunction populateResultsTable(results) {\n    const tableBody = document.getElementById('resultsTableBody');\n    tableBody.innerHTML = '';\n\n    results.forEach(result => {\n        const row = document.createElement('tr');\n        row.innerHTML = `\n            <td>${formatCurrency(result.price)}</td>\n            <td>${formatPercentage(result.profitMargin)}</td>\n        `;\n        tableBody.appendChild(row);\n    });\n}\n\n// Function to format numbers as currency\nfunction formatCurrency(value) {\n    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);\n}\n\n// Function to format percentages\nfunction formatPercentage(value) {\n    return `${(value * 100).toFixed(2)}%`;\n}\n\n// Example key event listener\ndocument.addEventListener('keydown', handleEnter);\n
+async function searchAuctions() {
+    const query = document.getElementById('searchInput').value.trim();
+    
+    if (!query) {
+        showError('Please enter a search term');
+        return;
+    }
+
+    showSpinner(true);
+    hideAllResults();
+
+    try {
+        const response = await fetch(`/opportunities?query=${encodeURIComponent(query)}`);
+        const data = await response.json();
+        showSpinner(false);
+
+        if (!data.success) {
+            showError(data.error || 'Failed to fetch auctions');
+            return;
+        }
+
+        if (data.opportunities_found === 0) {
+            showNoResults();
+            return;
+        }
+
+        displayStats(data.total_scanned, data.opportunities_found, data.data);
+        displayResults(data.data);
+
+    } catch (error) {
+        showSpinner(false);
+        showError('Error: ' + error.message);
+    }
+}
+
+function displayStats(scanned, deals, data) {
+    const bestProfit = data.length > 0 ? Math.max(...data.map(d => d.profit)) : 0;
+    document.getElementById('scannedCount').textContent = scanned;
+    document.getElementById('dealsCount').textContent = deals;
+    document.getElementById('bestProfit').textContent = '$' + bestProfit.toFixed(2);
+    document.getElementById('stats').classList.remove('hidden');
+}
+
+function displayResults(deals) {
+    const tbody = document.getElementById('resultsTable');
+    tbody.innerHTML = '';
+
+    deals.forEach(deal => {
+        const row = `<tr>
+            <td>${deal.title}</td>
+            <td>$${deal.price.toFixed(2)}</td>
+            <td>$${deal.estimatedValue.toFixed(2)}</td>
+            <td style="color: green; font-weight: bold;">$${deal.profit.toFixed(2)}</td>
+            <td>${deal.roi.toFixed(1)}%</td>
+            <td>${deal.condition}</td>
+            <td>${deal.bidCount}</td>
+        </tr>`;
+        tbody.innerHTML += row;
+    });
+
+    document.getElementById('results').classList.remove('hidden');
+}
+
+function showSpinner(show) {
+    document.getElementById('loadingSpinner').classList.toggle('hidden', !show);
+}
+
+function hideAllResults() {
+    document.getElementById('results').classList.add('hidden');
+    document.getElementById('stats').classList.add('hidden');
+    document.getElementById('error').classList.add('hidden');
+    document.getElementById('noResults').classList.add('hidden');
+}
+
+function showError(message) {
+    document.getElementById('error').textContent = message;
+    document.getElementById('error').classList.remove('hidden');
+}
+
+function showNoResults() {
+    document.getElementById('noResults').classList.remove('hidden');
+}
+
+function handleEnter(event) {
+    if (event.key === 'Enter') {
+        searchAuctions();
+    }
+}
