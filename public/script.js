@@ -86,3 +86,15 @@ function handleEnter(event) {
         searchAuctions();
     }
 }
+function scanCategory() {
+    const category = document.getElementById('categorySelect').value;
+    
+    if (!category) {
+        showError('Please select a category');
+        return;
+    }
+
+    // Use the selected category as the search query
+    document.getElementById('searchInput').value = category;
+    searchAuctions();
+}
