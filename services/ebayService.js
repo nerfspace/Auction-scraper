@@ -1,72 +1,46 @@
 require('dotenv').config();
 
-const CLIENT_ID = process.env.EBAY_CLIENT_ID;
-const CLIENT_SECRET = process.env.EBAY_CLIENT_SECRET;
-let accessToken = null;
-let tokenExpiry = null;
-
-async function getAccessToken() {
-    // Return cached token if still valid
-    if (accessToken && tokenExpiry && Date.now() < tokenExpiry) {
-        return accessToken;
-    }
-
-    try {
-        const credentials = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64');
-        
-        const response = await fetch('https://api.sandbox.ebay.com/identity/v1/oauth2/token', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Basic ${credentials}`,
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: 'grant_type=client_credentials&scope=https://api.ebay.com/oauth/api_scope'
-        });
-
-        if (!response.ok) {
-            throw new Error(`OAuth failed: ${response.status}`);
-        }
-
-        const data = await response.json();
-        accessToken = data.access_token;
-        tokenExpiry = Date.now() + (data.expires_in * 1000) - 60000; // Refresh 1 min before expiry
-        
-        console.log('✅ Got new eBay access token');
-        return accessToken;
-    } catch (error) {
-        console.error('❌ Error getting access token:', error);
-        throw error;
-    }
-}
-
 function searchAuctions(query) {
-    return getAccessToken()
-        .then(token => {
-            return fetch(`https://api.sandbox.ebay.com/buy/browse/v1/item_search?q=${encodeURIComponent(query)}&limit=10`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
-                    'Content-Type': 'application/json'
-                }
-            });
-        })
-        .then(response => response.json())
-        .then(data => {
-            const items = data.itemSummaries || [];
-            return items.map(item => ({
-                title: item.title,
-                price: item.price?.value || 0,
-                currency: item.price?.currency || 'USD',
-                condition: item.condition || 'Unknown',
-                itemId: item.itemId,
-                estimatedValue: (item.price?.value || 0) * 1.8 // Estimate 80% higher
-            }));
-        })
-        .catch(error => {
-            console.error('eBay API Error:', error);
-            return [];
-        });
+    // Mock eBay data for testing - mimics real API response
+    const mockAuctions = [
+        {
+            title: `Apple iPhone 12 ${query}`,
+            price: 450,
+            condition: 'Used',
+            estimatedValue: 650,
+            bidCount: 5
+        },
+        {
+            title: `Apple iPhone 13 ${query}`,
+            price: 520,
+            condition: 'Like New',
+            estimatedValue: 850,
+            bidCount: 12
+        },
+        {
+            title: `Apple iPhone 11 ${query}`,
+            price: 380,
+            condition: 'Good',
+            estimatedValue: 550,
+            bidCount: 3
+        },
+        {
+            title: `Apple iPhone SE ${query}`,
+            price: 290,
+            condition: 'Used',
+            estimatedValue: 420,
+            bidCount: 8
+        },
+        {
+            title: `Apple iPhone X ${query}`,
+            price: 400,
+            condition: 'Fair',
+            estimatedValue: 500,
+            bidCount: 2
+        }
+    ];
+
+    return Promise.resolve(mockAuctions);
 }
 
 module.exports = { searchAuctions };
