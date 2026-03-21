@@ -1,6 +1,6 @@
 // ebayService.js
 
-const fetch = require('node-fetch');
+const response = await fetch(url);
 
 const EBAY_API_ENDPOINT = 'https://api.ebay.com/buy/browse/v1/item_search';
 const APP_ID = 'YOUR_APP_ID'; // Replace with your eBay App ID
