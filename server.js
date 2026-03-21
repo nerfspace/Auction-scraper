@@ -2,6 +2,7 @@ const express = require("express");
 const app = express();
 
 app.use(express.json());
+app.use(express.text()); // Handle plain text responses
 
 // Import services
 const ebayService = require("./services/ebayService");
@@ -15,6 +16,40 @@ const profitCalculator = require("./utils/profitCalculator");
 app.get("/", (req, res) => {
   res.send("Auction Arbitrage Engine Running");
 });
+
+// ----------------------
+// /ebay-notification → Marketplace Account Deletion Compliance
+// ----------------------
+app.post("/ebay-notification", (req, res) => {
+  try {
+    console.log("📬 eBay POST Notification received");
+    console.log("Body:", JSON.stringify(req.body));
+    console.log("Headers:", req.headers);
+    
+    // eBay expects a 200 response with verificationToken in JSON
+    res.status(200).json({
+      statusCode: 200,
+      verificationToken: "auction-scraper-ebay-compliance-verification-token-2026"
+    });
+  } catch (error) {
+    console.error("POST Notification Error:", error);
+    res.status(200).json({ 
+      statusCode: 200,
+      verificationToken: "auction-scraper-ebay-compliance-verification-token-2026"
+    });
+  }
+});
+
+app.get("/ebay-notification", (req, res) => {
+  console.log("📬 eBay GET Notification received");
+  console.log("Query params:", req.query);
+  
+  res.status(200).json({
+    statusCode: 200,
+    verificationToken: "auction-scraper-ebay-compliance-verification-token-2026"
+  });
+});
+
 // ----------------------
 // /debug-token → Check if OAuth token works
 // ----------------------
@@ -75,40 +110,6 @@ app.get("/scan", async (req, res) => {
     res.status(500).json({ error: "Failed to scan auctions" });
   }
 });
-// ----------------------
-// /debug → Check eBay API raw response
-// ----------------------
-app.get("/debug", async (req, res) => {
-  try {
-    const { query } = req.query;
-    
-    if (!query) {
-      return res.status(400).json({ error: "Missing search query" });
-    }
-
-    const response = await fetch(`https://api.sandbox.ebay.com/buy/browse/v1/item_search?q=${encodeURIComponent(query)}&limit=10`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${process.env.EBAY_AUTH_TOKEN}`,
-        'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
-        'Content-Type': 'application/json'
-      }
-    });
-
-    const data = await response.json();
-    
-    res.json({
-      status: response.status,
-      statusText: response.statusText,
-      headers: response.headers,
-      body: data
-    });
-
-  } catch (error) {
-    console.error("DEBUG ERROR:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
 
 // ----------------------
 // /opportunities → filtered profitable deals
@@ -157,41 +158,10 @@ app.get("/opportunities", async (req, res) => {
     res.status(500).json({ error: "Failed to analyze opportunities" });
   }
 });
-// ----------------------
-// /ebay-notification → Marketplace Account Deletion Compliance
-// ----------------------
-app.post("/ebay-notification", (req, res) => {
-  try {
-    // Log the notification
-    console.log("📬 eBay Notification received:", {
-      timestamp: new Date().toISOString(),
-      body: req.body,
-      headers: req.headers
-    });
 
-    // Respond with 200 OK to acknowledge receipt
-    res.status(200).json({
-      statusCode: 200,
-      statusMessage: "Received"
-    });
-  } catch (error) {
-    console.error("Notification Error:", error);
-    res.status(200).json({ 
-      statusCode: 200,
-      statusMessage: "Received"
-    });
-  }
-});
-
-app.get("/ebay-notification", (req, res) => {
-  res.status(200).json({
-    statusCode: 200,
-    verificationToken: "auction-scraper-ebay-compliance-verification-token-2026"
-  });
-});
 
 // ----------------------
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
