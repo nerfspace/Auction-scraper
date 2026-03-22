@@ -24,13 +24,18 @@ async function searchAuctions() {
 }
 
 function scanCategory() {
-    const category = document.getElementById('categorySelect').value;
+    const categorySelect = document.getElementById('categorySelect');
+    const category = categorySelect.value.trim();
+    
+    console.log('Category selected:', category); // Debug log
     
     if (!category) {
-        showError('Please select a category');
+        showError('Please select a category first');
+        categorySelect.focus(); // Focus on dropdown to highlight
         return;
     }
 
+    console.log('Starting scan for:', category); // Debug log
     document.getElementById('searchInput').value = category;
     performSearch(category);
 }
