@@ -129,6 +129,7 @@ function displayResults(deals) {
             <td>${(deal.roi || 0).toFixed(1)}%</td>
             <td>${deal.condition || 'Unknown'}</td>
             <td>${deal.bidCount || 0}</td>
+            <td>${deal.timeRemaining}</td>
         </tr>`;
         tbody.innerHTML += row;
     });
