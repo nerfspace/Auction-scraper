@@ -3,137 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Auction Arbitrage Engine</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Auction Scraper</title>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🔍 Auction Arbitrage Engine</h1>
-            <p>Find profitable deals on eBay auctions</p>
-        </header>
-
-        <div class="search-section">
-            <input 
-                type="text" 
-                id="searchInput" 
-                placeholder="Search for items (e.g., iPhone, laptop, gaming console)"
-                onkeypress="handleEnter(event)"
-            >
-            <button onclick="searchAuctions()">Search Deals</button>
-        </div>
-
-        <div class="category-section">
-            <h3>📂 Quick Category Scan</h3>
-            <div>
-                <select id="categorySelect">
-                    <option value="">-- Select a Category --</option>
-                    <option value="Electronics">Electronics</option>
-                    <option value="Fashion">Fashion</option>
-                    <option value="Home & Garden">Home & Garden</option>
-                    <option value="Sports">Sports</option>
-                    <option value="Collectibles">Collectibles</option>
-                    <option value="Toys">Toys</option>
-                    <option value="Books">Books</option>
-                </select>
-                <button onclick="scanCategory()">Scan Category</button>
-            </div>
-        </div>
-
-        <div class="profit-filter">
-            <h3>💰 Search by Profit Target</h3>
-            <div class="profit-buttons">
-                <button onclick="searchByProfit(25)" class="profit-btn">$25+</button>
-                <button onclick="searchByProfit(50)" class="profit-btn">$50+</button>
-                <button onclick="searchByProfit(100)" class="profit-btn">$100+</button>
-                <button onclick="searchByProfit(500)" class="profit-btn">$500+</button>
-            </div>
-        </div>
-
-        <div class="margin-adjuster">
-            <h3>⚙️ Adjust Profit Threshold</h3>
-            <div class="slider-container">
-                <label for="profitSlider">Minimum Profit:</label>
-                <input type="range" id="profitSlider" min="0" max="500" value="5" step="5">
-                <span id="profitValue">$5</span>
-            </div>
-            <button onclick="applyProfitThreshold()">Apply Filter</button>
-        </div>
-        
-        <div class="time-filter">
-            <h3>⏰ Filter by Time Remaining</h3>
-            <div class="time-buttons">
-                <button onclick="filterByTime('nextHour')" class="time-btn">Ending Next Hour</button>
-                <button onclick="filterByTime('today')" class="time-btn">Ending Today</button>
-                <button onclick="filterByTime('thisWeek')" class="time-btn">Ending This Week</button>
-                <button onclick="filterByTime('all')" class="time-btn">All Active</button>
-            </div>
-        </div>
-        
-        <div id="loadingSpinner" class="spinner hidden"></div>
-
-        <div id="stats" class="stats hidden">
-            <div class="stat-card">
-                <h3>Scanned</h3>
-                <p id="scannedCount">0</p>
-            </div>
-            <div class="stat-card">
-                <h3>Profitable Deals</h3>
-                <p id="dealsCount">0</p>
-            </div>
-            <div class="stat-card">
-                <h3>Best Profit</h3>
-                <p id="bestProfit">$0</p>
-            </div>
-        </div>
-        <div id="comparison" class="comparison hidden">
-            <h2>📊 Deal vs Last Sold Comparison</h2>
-            <div class="comparison-container">
-                <div class="comparison-card">
-                    <h3>🔴 Current Auction</h3>
-                    <div class="comparison-content">
-                        <p><strong>Title:</strong> <span id="compCurrentTitle"></span></p>
-                        <p><strong>Current Bid:</strong> <span id="compCurrentPrice"></span></p>
-                        <p><strong>Condition:</strong> <span id="compCurrentCondition"></span></p>
-                        <p><strong>Link:</strong> <a id="compCurrentLink" href="#" target="_blank">View on eBay</a></p>
-                    </div>
-                </div>
-
-                <div class="comparison-card">
-                    <h3>🟢 Last Sold Item</h3>
-                    <div class="comparison-content">
-                        <p><strong>Sold Price:</strong> <span id="compSoldPrice"></span></p>
-                        <p><strong>Your Profit:</strong> <span id="compProfit"></span></p>
-                        <p><strong>ROI:</strong> <span id="compROI"></span></p>
-                        <p><strong>Fees:</strong> <span id="compFees"></span></p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div id="results" class="results hidden">
-            <h2>💰 Profitable Opportunities</h2>
-            <table>
-                <thead>
-                                       <tr>
-                        <th>Item Title</th>
-                        <th>Current Bid</th>
-                        <th>Time Left</th>
-                        <th>Est. Value</th>
-                        <th>Profit</th>
-                        <th>ROI %</th>
-                        <th>Bids</th>
-                    </tr>
-                </thead>
-                <tbody id="resultsTable"></tbody>
-            </table>
-        </div>
-
-        <div id="error" class="error hidden"></div>
-        <div id="noResults" class="no-results hidden">
-            <p>No profitable deals found. Try a different search!</p>
-        </div>
+    <div>
+        <button data-action="startAuction">Start Auction</button>
+        <button data-action="endAuction">End Auction</button>
+        <div data-action="itemClicked">Item</div>
     </div>
+    <script>
+        document.querySelector('[data-action="startAuction"]').addEventListener('click', startAuction);
+        document.querySelector('[data-action="endAuction"]').addEventListener('click', endAuction);
+        document.querySelector('[data-action="itemClicked"]').addEventListener('click', itemClicked);
 
-    <script src="script.js"></script>
+        function startAuction() {
+            // Functionality to start auction
+        }
+
+        function endAuction() {
+            // Functionality to end auction
+        }
+
+        function itemClicked() {
+            // Functionality for when an item is clicked
+        }
+    </script>
 </body>
 </html>
