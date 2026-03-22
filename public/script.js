@@ -1,3 +1,17 @@
+let currentMinProfit = 5;
+let allDeals = [];
+
+// Update slider display
+document.addEventListener('DOMContentLoaded', function() {
+    const slider = document.getElementById('profitSlider');
+    if (slider) {
+        slider.addEventListener('input', function() {
+            document.getElementById('profitValue').textContent = '$' + this.value;
+            currentMinProfit = parseInt(this.value);
+        });
+    }
+});
+
 async function searchAuctions() {
     const query = document.getElementById('searchInput').value.trim();
     
@@ -6,6 +20,48 @@ async function searchAuctions() {
         return;
     }
 
+    await performSearch(query);
+}
+
+function scanCategory() {
+    const category = document.getElementById('categorySelect').value;
+    
+    if (!category) {
+        showError('Please select a category');
+        return;
+    }
+
+    document.getElementById('searchInput').value = category;
+    performSearch(category);
+}
+
+function searchByProfit(profitTarget) {
+    currentMinProfit = profitTarget;
+    document.getElementById('profitSlider').value = profitTarget;
+    document.getElementById('profitValue').textContent = '$' + profitTarget;
+    
+    const query = document.getElementById('searchInput').value.trim();
+    
+    if (!query) {
+        showError('Please enter a search term first');
+        return;
+    }
+
+    performSearch(query);
+}
+
+function applyProfitThreshold() {
+    const query = document.getElementById('searchInput').value.trim();
+    
+    if (!query) {
+        showError('Please enter a search term first');
+        return;
+    }
+
+    performSearch(query);
+}
+
+async function performSearch(query) {
     showSpinner(true);
     hideAllResults();
 
@@ -24,8 +80,19 @@ async function searchAuctions() {
             return;
         }
 
-        displayStats(data.total_scanned, data.opportunities_found, data.data);
-        displayResults(data.data);
+        // Store all deals
+        allDeals = data.data;
+
+        // Filter by current minimum profit
+        const filteredDeals = allDeals.filter(deal => deal.profit >= currentMinProfit);
+
+        if (filteredDeals.length === 0) {
+            showNoResults();
+            return;
+        }
+
+        displayStats(data.total_scanned, filteredDeals.length, filteredDeals);
+        displayResults(filteredDeals);
 
     } catch (error) {
         showSpinner(false);
@@ -88,16 +155,4 @@ function handleEnter(event) {
     if (event.key === 'Enter') {
         searchAuctions();
     }
-}
-
-function scanCategory() {
-    const category = document.getElementById('categorySelect').value;
-    
-    if (!category) {
-        showError('Please select a category');
-        return;
-    }
-
-    document.getElementById('searchInput').value = category;
-    searchAuctions();
 }
