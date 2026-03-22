@@ -13,16 +13,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Button handlers
-    document.getElementById('btn-search-auctions')?.addEventListener('click', searchAuctions);
-    document.getElementById('btn-scan-category')?.addEventListener('click', scanCategory);
-    document.getElementById('btn-apply-profit-threshold')?.addEventListener('click', applyProfitThreshold);
-    
-    // Search input Enter key
-    document.getElementById('searchInput')?.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') searchAuctions();
-    });
-
     // Event delegation for profit buttons and time buttons
     document.addEventListener('click', function(event) {
         if (event.target.matches('.profit-btn')) {
@@ -32,7 +22,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Bid filter sliders - NOW WORKING ✓
+    // Search input Enter key
+    document.getElementById('searchInput')?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') searchAuctions();
+    });
+
+    // Bid filter sliders
     const maxBidSlider = document.getElementById('maxBidSlider');
     const minBidSlider = document.getElementById('minBidSlider');
     
@@ -41,7 +36,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const value = parseInt(this.value);
             const minValue = parseInt(minBidSlider?.value || 0);
             
-            // Prevent max from going below min
             if (value < minValue) {
                 this.value = minValue;
                 return;
@@ -57,7 +51,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const value = parseInt(this.value);
             const maxValue = parseInt(maxBidSlider?.value || 500);
             
-            // Prevent min from going above max
             if (value > maxValue) {
                 this.value = maxValue;
                 return;
@@ -134,22 +127,55 @@ function applyBidFilter() {
     performSearch(query);
 }
 
-function isWithinTimeFrame(itemEndDate) {
-    if (!itemEndDate) return true;
+function getTimeRemaining(itemEndDate) {
+    if (!itemEndDate) return { minutes: 0, hours: 0, days: 0, displayText: 'N/A' };
+    
     const endTime = new Date(itemEndDate);
     const now = new Date();
     const diffMs = endTime - now;
-    const diffHours = diffMs / (1000 * 60 * 60);
-    const diffMins = diffMs / (1000 * 60);
-    const diffDays = diffHours / 24;
+    
+    const totalMinutes = Math.floor(diffMs / (1000 * 60));
+    const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const totalDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    return {
+        minutes: totalMinutes,
+        hours: totalHours,
+        days: totalDays,
+        displayText: formatTimeRemaining(totalMinutes, totalHours, totalDays)
+    };
+}
+
+function formatTimeRemaining(minutes, hours, days) {
+    if (days > 0) {
+        return `${days}d ${hours % 24}h`;
+    } else if (hours > 0) {
+        return `${hours}h ${minutes % 60}m`;
+    } else if (minutes > 0) {
+        return `${minutes}m`;
+    } else {
+        return 'Ended';
+    }
+}
+
+function isWithinTimeFrame(itemEndDate) {
+    if (!itemEndDate) return true;
+    
+    const timeData = getTimeRemaining(itemEndDate);
     
     switch(currentTimeFilter) {
-        case 'next5mins': return diffMins <= 5 && diffMins > 0;
-        case 'nextHour': return diffHours <= 1 && diffHours > 0;
-        case 'today': return diffDays <= 1 && diffDays > 0;
-        case 'thisWeek': return diffDays <= 7 && diffDays > 0;
-        case 'all': return diffDays > 0;
-        default: return true;
+        case 'next5mins': 
+            return timeData.minutes <= 5 && timeData.minutes > 0;
+        case 'nextHour': 
+            return timeData.hours <= 1 && timeData.hours > 0;
+        case 'today': 
+            return timeData.days <= 1 && timeData.days > 0;
+        case 'thisWeek': 
+            return timeData.days <= 7 && timeData.days > 0;
+        case 'all': 
+            return timeData.minutes > 0;
+        default: 
+            return true;
     }
 }
 
@@ -210,6 +236,7 @@ function displayResults(deals) {
     deals.forEach(deal => {
         const itemUrl = deal.itemUrl || '#';
         const title = deal.title || 'Unknown Item';
+        const timeData = getTimeRemaining(deal.itemEndDate);
         
         const row = document.createElement('tr');
         row.style.cursor = 'pointer';
@@ -217,7 +244,7 @@ function displayResults(deals) {
         row.innerHTML = `
             <td><a href="${itemUrl}" target="_blank" rel="noopener noreferrer" style="color: #667eea; text-decoration: none; font-weight: 500;" onclick="event.stopPropagation()">${title}</a></td>
             <td>$${(deal.price || 0).toFixed(2)}</td>
-            <td>${deal.timeRemaining}</td>
+            <td>${timeData.displayText}</td>
             <td>$${(deal.estimatedValue || 0).toFixed(2)}</td>
             <td style="color: green; font-weight: bold;">$${(deal.profit || 0).toFixed(2)}</td>
             <td>${(deal.roi || 0).toFixed(1)}%</td>
@@ -265,20 +292,17 @@ function showComparison(deal) {
     document.getElementById('compROI').textContent = (deal.roi || 0).toFixed(1) + '%';
     document.getElementById('compFees').textContent = '$' + (deal.fees || 0).toFixed(2);
 
-    // Add sold listing link if available
     const comparisonContent = document.querySelector('.comparison-card:last-child .comparison-content');
     let soldLinkElement = document.getElementById('compSoldLink');
     
     if (deal.soldLink) {
         if (!soldLinkElement) {
-            // Create the element if it doesn't exist
             soldLinkElement = document.createElement('p');
             soldLinkElement.id = 'compSoldLink';
             comparisonContent.appendChild(soldLinkElement);
         }
         soldLinkElement.innerHTML = `<strong>View Sold Listings:</strong> <a href="${deal.soldLink}" target="_blank" rel="noopener noreferrer" style="color: #667eea; text-decoration: none; font-weight: 600;">See Similar Sold Items →</a>`;
     } else if (soldLinkElement) {
-        // Remove if no soldLink available
         soldLinkElement.remove();
     }
 
