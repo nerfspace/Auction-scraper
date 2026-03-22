@@ -41,13 +41,13 @@ async function getAuthToken() {
     }
 }
 
-async function getAverageSoldPrice(query) {
+async function getAverageSoldPrice(itemTitle) {
     try {
         const token = await getAuthToken();
         if (!token) return null;
 
-        // Get last 5 listings to extract any sold data we can find
-        const response = await fetch(`${EBAY_API_ENDPOINT}?q=${encodeURIComponent(query)}&limit=5`, {
+        // Search for the SPECIFIC item title to get sold prices
+        const response = await fetch(`${EBAY_API_ENDPOINT}?q=${encodeURIComponent(itemTitle)}&limit=10`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -61,17 +61,20 @@ async function getAverageSoldPrice(query) {
         const data = await response.json();
         if (!data.itemSummaries || data.itemSummaries.length === 0) return null;
 
-        // Use median of current prices as baseline for sold price estimate
+        // Get prices from similar active items
         const prices = data.itemSummaries
             .filter(item => item.price && item.price.value)
-            .map(item => parseFloat(item.price.value));
+            .map(item => parseFloat(item.price.value))
+            .slice(0, 5); // Take top 5 prices
 
         if (prices.length === 0) return null;
 
-        // Return 1.3x the median as estimated sold price (typical markup)
+        // Calculate median price
         prices.sort((a, b) => a - b);
         const median = prices[Math.floor(prices.length / 2)];
-        return parseFloat((median * 1.3).toFixed(2));
+        
+        // Return 1.2x median as estimated sold value
+        return parseFloat((median * 1.2).toFixed(2));
 
     } catch (error) {
         console.error('Error getting average sold price:', error);
@@ -110,10 +113,17 @@ async function searchAuctions(query) {
             return [];
         }
 
-        // Get estimated sold price
-        const soldPrice = await getAverageSoldPrice(query);
+        // For each item, get sold price based on that specific item's title
+        const promises = data.itemSummaries.map(async (item) => {
+            const itemSoldPrice = await getAverageSoldPrice(item.title);
+            return { item, itemSoldPrice };
+        });
+        
+        const itemsWithPrices = await Promise.all(promises);
 
-        return data.itemSummaries.map(item => {
+        return itemsWithPrices.map(({ item, itemSoldPrice }) => {
+            const soldPrice = itemSoldPrice;
+
             // Calculate time remaining
             let timeRemaining = 'Unknown';
             if (item.itemEndDate) {
@@ -142,10 +152,10 @@ async function searchAuctions(query) {
                 itemUrl: item.itemWebUrl,
                 itemId: item.itemId,
                 bidCount: item.bidCount || 0,
-                estimatedValue: soldPrice || (parseFloat(item.price?.value) * 1.3) || 0,
+                estimatedValue: soldPrice || (parseFloat(item.price?.value) * 1.2) || 0,
                 timeRemaining: timeRemaining,
                 itemEndDate: item.itemEndDate,
-                soldLink: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(query)}&LH_ItemCondition=3000&LH_Sold=1&LH_Complete=1&sort=asc&rt=nc`
+                soldLink: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(item.title)}&LH_ItemCondition=3000&LH_Sold=1&LH_Complete=1&sort=asc&rt=nc`
             };
         });
 
