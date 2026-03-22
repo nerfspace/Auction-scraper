@@ -211,6 +211,23 @@ function showComparison(deal) {
     document.getElementById('compROI').textContent = (deal.roi || 0).toFixed(1) + '%';
     document.getElementById('compFees').textContent = '$' + (deal.fees || 0).toFixed(2);
 
+    // Add sold listing link if available
+    const comparisonContent = document.querySelector('.comparison-card:last-child .comparison-content');
+    let soldLinkElement = document.getElementById('compSoldLink');
+    
+    if (deal.soldLink) {
+        if (!soldLinkElement) {
+            // Create the element if it doesn't exist
+            soldLinkElement = document.createElement('p');
+            soldLinkElement.id = 'compSoldLink';
+            comparisonContent.appendChild(soldLinkElement);
+        }
+        soldLinkElement.innerHTML = `<strong>View Sold Listings:</strong> <a href="${deal.soldLink}" target="_blank" rel="noopener noreferrer" style="color: #667eea; text-decoration: none; font-weight: 600;">See Similar Sold Items →</a>`;
+    } else if (soldLinkElement) {
+        // Remove if no soldLink available
+        soldLinkElement.remove();
+    }
+
     document.getElementById('comparison').classList.remove('hidden');
     document.getElementById('comparison').scrollIntoView({ behavior: 'smooth' });
 }
