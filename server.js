@@ -11,6 +11,13 @@ app.use(express.text());
 const ebayService = require("./services/ebayService");
 const valuationService = require("./services/valuationService");
 const profitCalculator = require("./utils/profitCalculator");
+const analyticsService = require("./services/analyticsService");
+const catalogService = require("./services/catalogService");
+const pricingService = require("./services/pricingService");
+const listingService = require("./services/listingService");
+const inventoryService = require("./services/inventoryService");
+const shippingService = require("./services/shippingService");
+const returnsService = require("./services/returnsService");
 
 // ----------------------
 // HEALTH CHECK
@@ -20,98 +27,7 @@ app.get("/", (req, res) => {
 });
 
 // ----------------------
-// /notification → eBay Marketplace Account Deletion Compliance
-// ----------------------
-app.all("/notification", (req, res) => {
-  console.log("📬 eBay Notification received");
-  
-  const challengeCode = req.query.challenge_code;
-  const endpoint = 'https://auction-scraper-tey5.onrender.com/notification';
-  const verificationToken = 'auction-scraper-ebay-compliance-verification-token-2026';
-  
-  if (challengeCode) {
-    console.log("✅ Challenge code received:", challengeCode);
-    
-    const hash = crypto.createHash('sha256');
-    hash.update(challengeCode);
-    hash.update(verificationToken);
-    hash.update(endpoint);
-    const responseHash = hash.digest('hex');
-    
-    console.log("✅ Sending challenge response:", responseHash);
-    res.set('Content-Type', 'application/json');
-    res.status(200).json({
-      challengeResponse: responseHash
-    });
-  } else {
-    res.status(200).json({ statusCode: 200 });
-  }
-});
-
-// ----------------------
-// /debug-token → Check if OAuth token works
-// ----------------------
-app.get("/debug-token", async (req, res) => {
-  try {
-    const CLIENT_ID = process.env.EBAY_CLIENT_ID;
-    const CLIENT_SECRET = process.env.EBAY_CLIENT_SECRET;
-
-    console.log('CLIENT_ID:', CLIENT_ID ? 'Set ✓' : 'NOT SET ✗');
-    console.log('CLIENT_SECRET:', CLIENT_SECRET ? 'Set ✓' : 'NOT SET ✗');
-
-    const credentials = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64');
-    
-    const response = await fetch('https://api.ebay.com/identity/v1/oauth2/token', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${credentials}`,
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: 'grant_type=client_credentials&scope=https://api.ebay.com/oauth/api_scope'
-    });
-
-    const data = await response.json();
-    
-    res.json({
-      status: response.status,
-      hasToken: !!data.access_token,
-      expiresIn: data.expires_in,
-      errorMessage: data.error_description || 'None'
-    });
-
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ----------------------
-// /scan → Raw auction data
-// ----------------------
-app.get("/scan", async (req, res) => {
-  try {
-    const { query } = req.query;
-
-    if (!query) {
-      return res.status(400).json({ error: "Missing search query" });
-    }
-
-    const auctions = await ebayService.searchAuctions(query);
-    console.log(`SCAN: found ${auctions.length} auctions for "${query}"`);
-
-    res.json({
-      success: true,
-      count: auctions.length,
-      data: auctions
-    });
-
-  } catch (error) {
-    console.error("SCAN ERROR:", error);
-    res.status(500).json({ error: "Failed to scan auctions" });
-  }
-});
-
-// ----------------------
-// /opportunities → filtered profitable deals WITH PROFIT CALCULATION
+// OPPORTUNITIES ENDPOINT
 // ----------------------
 app.get("/opportunities", async (req, res) => {
   try {
@@ -121,47 +37,23 @@ app.get("/opportunities", async (req, res) => {
       return res.status(400).json({ error: "Missing search query" });
     }
 
-    // 1. Get auctions
     const auctions = await ebayService.searchAuctions(query);
-    console.log(`\n📊 OPPORTUNITIES: found ${auctions.length} auctions for "${query}"`);
+    console.log(`OPPORTUNITIES: found ${auctions.length} auctions for "${query}"`);
 
-    // DEBUG: Log first item BEFORE profit calculation
-    if (auctions.length > 0) {
-      console.log('🔍 BEFORE PROFIT CALC - First item:');
-      console.log(`   Title: ${auctions[0].title}`);
-      console.log(`   Price: ${auctions[0].price}`);
-      console.log(`   Estimated Value: ${auctions[0].estimatedValue}`);
-    }
-
-    // 2. Add profit calculations to each auction
-    const withProfit = auctions.map((item, index) => {
-      console.log(`\n📈 Processing item ${index + 1}:`);
-      console.log(`   Input to profitCalculator - Price: ${item.price}, EstValue: ${item.estimatedValue}`);
-      
+    const withProfit = auctions.map(item => {
       const profitData = profitCalculator.calculate(item);
       
-      console.log(`   Output from profitCalculator - Profit: ${profitData.profit}, ROI: ${profitData.roi}`);
-      
-      const result = {
+      return {
         ...item,
         profit: profitData.profit,
         roi: profitData.roi,
         fees: profitData.fees,
         estimatedValue: profitData.estimatedSelling
       };
-      
-      console.log(`   Final result - Price: ${result.price}, Profit: ${result.profit}, ROI: ${result.roi}`);
-      
-      return result;
     });
 
-    // 3. Filter deals with any profit
     const deals = withProfit.filter(item => item.profit > 0);
-
-    // 4. Sort best first
     deals.sort((a, b) => b.profit - a.profit);
-
-    console.log(`\n✅ OPPORTUNITIES: ${deals.length} profitable deals found (out of ${auctions.length} total)\n`);
 
     res.json({
       success: true,
@@ -173,6 +65,315 @@ app.get("/opportunities", async (req, res) => {
   } catch (error) {
     console.error("OPPORTUNITY ERROR:", error);
     res.status(500).json({ error: "Failed to analyze opportunities" });
+  }
+});
+
+// ----------------------
+// ANALYTICS ENDPOINTS
+// ----------------------
+app.get("/api/analytics/trends", async (req, res) => {
+  try {
+    const { keyword, categoryId } = req.query;
+
+    if (!keyword) {
+      return res.status(400).json({ error: "Missing keyword" });
+    }
+
+    const trends = await analyticsService.getTrendingKeywords(keyword, categoryId);
+
+    res.json({
+      success: true,
+      data: trends
+    });
+
+  } catch (error) {
+    console.error("ANALYTICS ERROR:", error);
+    res.status(500).json({ error: "Failed to fetch analytics" });
+  }
+});
+
+// ----------------------
+// CATALOG ENDPOINTS
+// ----------------------
+app.get("/api/catalog/search", async (req, res) => {
+  try {
+    const { q } = req.query;
+
+    if (!q) {
+      return res.status(400).json({ error: "Missing search query" });
+    }
+
+    const products = await catalogService.searchProducts(q);
+
+    res.json({
+      success: true,
+      data: products
+    });
+
+  } catch (error) {
+    console.error("CATALOG ERROR:", error);
+    res.status(500).json({ error: "Failed to search catalog" });
+  }
+});
+
+app.get("/api/catalog/product/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const product = await catalogService.getProductDetails(id);
+
+    res.json({
+      success: true,
+      data: product
+    });
+
+  } catch (error) {
+    console.error("CATALOG ERROR:", error);
+    res.status(500).json({ error: "Failed to fetch product details" });
+  }
+});
+
+// ----------------------
+// PRICING ENDPOINTS
+// ----------------------
+app.get("/api/pricing/item/:itemId", async (req, res) => {
+  try {
+    const { itemId } = req.params;
+
+    const pricing = await pricingService.getItemPricing(itemId);
+
+    res.json({
+      success: true,
+      data: pricing
+    });
+
+  } catch (error) {
+    console.error("PRICING ERROR:", error);
+    res.status(500).json({ error: "Failed to fetch pricing" });
+  }
+});
+
+app.post("/api/pricing/bulk", async (req, res) => {
+  try {
+    const { requests } = req.body;
+
+    if (!requests) {
+      return res.status(400).json({ error: "Missing requests" });
+    }
+
+    const pricing = await pricingService.getBulkPricing(requests);
+
+    res.json({
+      success: true,
+      data: pricing
+    });
+
+  } catch (error) {
+    console.error("PRICING ERROR:", error);
+    res.status(500).json({ error: "Failed to fetch bulk pricing" });
+  }
+});
+
+// ----------------------
+// LISTING ENDPOINTS
+// ----------------------
+app.post("/api/listing/create", async (req, res) => {
+  try {
+    const listingData = req.body;
+
+    const result = await listingService.createFixedPriceListing(listingData);
+
+    res.json({
+      success: true,
+      data: result
+    });
+
+  } catch (error) {
+    console.error("LISTING ERROR:", error);
+    res.status(500).json({ error: "Failed to create listing" });
+  }
+});
+
+app.put("/api/listing/:itemId", async (req, res) => {
+  try {
+    const { itemId } = req.params;
+    const updateData = req.body;
+
+    const result = await listingService.updateListing(itemId, updateData);
+
+    res.json({
+      success: true,
+      data: result
+    });
+
+  } catch (error) {
+    console.error("LISTING ERROR:", error);
+    res.status(500).json({ error: "Failed to update listing" });
+  }
+});
+
+app.delete("/api/listing/:itemId", async (req, res) => {
+  try {
+    const { itemId } = req.params;
+
+    const result = await listingService.deleteListing(itemId);
+
+    res.json({
+      success: true,
+      data: result
+    });
+
+  } catch (error) {
+    console.error("LISTING ERROR:", error);
+    res.status(500).json({ error: "Failed to delete listing" });
+  }
+});
+
+// ----------------------
+// INVENTORY ENDPOINTS
+// ----------------------
+app.get("/api/inventory/:sku", async (req, res) => {
+  try {
+    const { sku } = req.params;
+
+    const inventory = await inventoryService.getInventoryItem(sku);
+
+    res.json({
+      success: true,
+      data: inventory
+    });
+
+  } catch (error) {
+    console.error("INVENTORY ERROR:", error);
+    res.status(500).json({ error: "Failed to fetch inventory" });
+  }
+});
+
+app.post("/api/inventory/:sku", async (req, res) => {
+  try {
+    const { sku } = req.params;
+    const itemData = req.body;
+
+    const result = await inventoryService.createInventoryItem(sku, itemData);
+
+    res.json({
+      success: true,
+      data: result
+    });
+
+  } catch (error) {
+    console.error("INVENTORY ERROR:", error);
+    res.status(500).json({ error: "Failed to create inventory item" });
+  }
+});
+
+app.put("/api/inventory/:sku/quantity", async (req, res) => {
+  try {
+    const { sku } = req.params;
+    const { quantity } = req.body;
+
+    const result = await inventoryService.updateInventoryQuantity(sku, quantity);
+
+    res.json({
+      success: true,
+      data: result
+    });
+
+  } catch (error) {
+    console.error("INVENTORY ERROR:", error);
+    res.status(500).json({ error: "Failed to update inventory quantity" });
+  }
+});
+
+// ----------------------
+// SHIPPING ENDPOINTS
+// ----------------------
+app.get("/api/shipping/order/:orderId", async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const shipping = await shippingService.getShippingQuote(orderId);
+
+    res.json({
+      success: true,
+      data: shipping
+    });
+
+  } catch (error) {
+    console.error("SHIPPING ERROR:", error);
+    res.status(500).json({ error: "Failed to fetch shipping info" });
+  }
+});
+
+app.post("/api/shipping/order/:orderId/shipment", async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const shipmentData = req.body;
+
+    const result = await shippingService.createShipment(orderId, shipmentData);
+
+    res.json({
+      success: true,
+      data: result
+    });
+
+  } catch (error) {
+    console.error("SHIPPING ERROR:", error);
+    res.status(500).json({ error: "Failed to create shipment" });
+  }
+});
+
+// ----------------------
+// RETURNS ENDPOINTS
+// ----------------------
+app.get("/api/returns", async (req, res) => {
+  try {
+    const returns = await returnsService.getReturnRequests();
+
+    res.json({
+      success: true,
+      data: returns
+    });
+
+  } catch (error) {
+    console.error("RETURNS ERROR:", error);
+    res.status(500).json({ error: "Failed to fetch returns" });
+  }
+});
+
+app.post("/api/returns/:returnId/approve", async (req, res) => {
+  try {
+    const { returnId } = req.params;
+    const approvalData = req.body;
+
+    const result = await returnsService.approveReturn(returnId, approvalData);
+
+    res.json({
+      success: true,
+      data: result
+    });
+
+  } catch (error) {
+    console.error("RETURNS ERROR:", error);
+    res.status(500).json({ error: "Failed to approve return" });
+  }
+});
+
+app.post("/api/returns/:returnId/refund", async (req, res) => {
+  try {
+    const { returnId } = req.params;
+    const refundData = req.body;
+
+    const result = await returnsService.processRefund(returnId, refundData);
+
+    res.json({
+      success: true,
+      data: result
+    });
+
+  } catch (error) {
+    console.error("RETURNS ERROR:", error);
+    res.status(500).json({ error: "Failed to process refund" });
   }
 });
 
