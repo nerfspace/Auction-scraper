@@ -139,8 +139,8 @@ app.get("/opportunities", async (req, res) => {
     });
 
       // 4. Filter deals with any profit
-    const deals = withProfit.filter(item =>
-  item.profit > 0 && item.roi > 10
+  const deals = withProfit.filter(item =>
+  item.profit > 0  // ← Remove the ROI > 10 requirement
 );
 
     // 5. Sort best first
