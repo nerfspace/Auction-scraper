@@ -431,4 +431,39 @@ tbody tr:nth-child(even) {
     .comparison-container {
         grid-template-columns: 1fr;
     }
+.time-filter {
+    background: #f0f9ff;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 30px;
+    border-left: 4px solid #00bcd4;
+}
+
+.time-filter h3 {
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.time-buttons {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+}
+
+.time-btn {
+    padding: 12px 15px;
+    background: linear-gradient(135deg, #00bcd4 0%, #0097a7 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.time-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 188, 212, 0.4);
+}
+
 }
