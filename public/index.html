@@ -18,8 +18,9 @@
                 type="text" 
                 id="searchInput" 
                 placeholder="Search for items (e.g., iPhone, laptop, gaming console)"
+                onkeypress="handleEnter(event)"
             >
-            <button id="btn-search-auctions">Search Deals</button>
+            <button onclick="searchAuctions()">Search Deals</button>
         </div>
 
         <div class="category-section">
@@ -27,25 +28,36 @@
             <div>
                 <select id="categorySelect">
                     <option value="">-- Select a Category --</option>
+                    <option value="eBay Motors">eBay Motors</option>
                     <option value="Electronics">Electronics</option>
-                    <option value="Fashion">Fashion</option>
+                    <option value="Collectibles & Art">Collectibles & Art</option>
                     <option value="Home & Garden">Home & Garden</option>
-                    <option value="Sports">Sports</option>
-                    <option value="Collectibles">Collectibles</option>
-                    <option value="Toys">Toys</option>
-                    <option value="Books">Books</option>
+                    <option value="Clothing, Shoes & Accessories">Clothing, Shoes & Accessories</option>
+                    <option value="Toys & Hobbies">Toys & Hobbies</option>
+                    <option value="Sporting Goods">Sporting Goods</option>
+                    <option value="Books, Movies & Music">Books, Movies & Music</option>
+                    <option value="Health & Beauty">Health & Beauty</option>
+                    <option value="Business & Industrial">Business & Industrial</option>
+                    <option value="Jewelry & Watches">Jewelry & Watches</option>
+                    <option value="Baby Essentials">Baby Essentials</option>
+                    <option value="Pet Supplies">Pet Supplies</option>
+                    <option value="Tickets & Travel">Tickets & Travel</option>
+                    <option value="Gift Cards & Coupons">Gift Cards & Coupons</option>
+                    <option value="Everything Else">Everything Else</option>
+                    <option value="Real Estate">Real Estate</option>
+                    <option value="Specialty Services">Specialty Services</option>
                 </select>
-                <button id="btn-scan-category">Scan Category</button>
+                <button onclick="scanCategory()">Scan Category</button>
             </div>
         </div>
 
         <div class="profit-filter">
             <h3>💰 Search by Profit Target</h3>
             <div class="profit-buttons">
-                <button class="profit-btn" data-profit="25">$25+</button>
-                <button class="profit-btn" data-profit="50">$50+</button>
-                <button class="profit-btn" data-profit="100">$100+</button>
-                <button class="profit-btn" data-profit="500">$500+</button>
+                <button onclick="searchByProfit(25)" class="profit-btn">$25+</button>
+                <button onclick="searchByProfit(50)" class="profit-btn">$50+</button>
+                <button onclick="searchByProfit(100)" class="profit-btn">$100+</button>
+                <button onclick="searchByProfit(500)" class="profit-btn">$500+</button>
             </div>
         </div>
 
@@ -56,10 +68,10 @@
                 <input type="range" id="profitSlider" min="0" max="500" value="5" step="5">
                 <span id="profitValue">$5</span>
             </div>
-            <button id="btn-apply-profit-threshold">Apply Filter</button>
+            <button onclick="applyProfitThreshold()">Apply Filter</button>
         </div>
 
-                <div class="bid-filter">
+        <div class="bid-filter">
             <h3>💵 Filter by Current Bid</h3>
             <div class="slider-container">
                 <label for="maxBidSlider">Maximum Bid:</label>
@@ -71,16 +83,16 @@
                 <input type="range" id="minBidSlider" min="0" max="1000" value="0" step="10">
                 <span id="minBidValue">$0</span>
             </div>
-            <button id="btn-apply-bid-filter">Apply Bid Filter</button>
+            <button onclick="applyBidFilter()">Apply Bid Filter</button>
         </div>
         
         <div class="time-filter">
             <h3>⏰ Filter by Time Remaining</h3>
             <div class="time-buttons">
-                <button class="time-btn" data-time="nextHour">Ending Next Hour</button>
-                <button class="time-btn" data-time="today">Ending Today</button>
-                <button class="time-btn" data-time="thisWeek">Ending This Week</button>
-                <button class="time-btn" data-time="all">All Active</button>
+                <button onclick="filterByTime('nextHour')" class="time-btn">Ending Next Hour</button>
+                <button onclick="filterByTime('today')" class="time-btn">Ending Today</button>
+                <button onclick="filterByTime('thisWeek')" class="time-btn">Ending This Week</button>
+                <button onclick="filterByTime('all')" class="time-btn">All Active</button>
             </div>
         </div>
         
