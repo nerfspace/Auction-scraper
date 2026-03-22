@@ -188,6 +188,8 @@ async function performSearch(query) {
         const data = await response.json();
         showSpinner(false);
 
+        console.log('API Response:', data); // DEBUG LOG
+        
         if (!data.success) {
             showError(data.error || 'Failed to fetch auctions');
             return;
@@ -199,6 +201,12 @@ async function performSearch(query) {
         }
 
         allDeals = data.data;
+        
+        // DEBUG: Log first item to see structure
+        if (allDeals.length > 0) {
+            console.log('First item structure:', allDeals[0]);
+        }
+        
         const filteredDeals = allDeals.filter(deal => 
             deal.profit >= currentMinProfit && 
             isWithinTimeFrame(deal.itemEndDate) &&
@@ -222,7 +230,7 @@ async function performSearch(query) {
 }
 
 function displayStats(scanned, deals, data) {
-    const bestProfit = data.length > 0 ? Math.max(...data.map(d => d.profit)) : 0;
+    const bestProfit = data.length > 0 ? Math.max(...data.map(d => d.profit || 0)) : 0;
     document.getElementById('scannedCount').textContent = scanned;
     document.getElementById('dealsCount').textContent = deals;
     document.getElementById('bestProfit').textContent = '$' + bestProfit.toFixed(2);
@@ -237,17 +245,22 @@ function displayResults(deals) {
         const itemUrl = deal.itemUrl || '#';
         const title = deal.title || 'Unknown Item';
         const timeData = getTimeRemaining(deal.itemEndDate);
+        const currentBid = deal.price || 0;  // ← ENSURE WE'RE GETTING PRICE
+        const profit = deal.profit || 0;
+        const roi = deal.roi || 0;
+        
+        console.log(`Item: ${title}, Price: ${currentBid}, Profit: ${profit}, ROI: ${roi}`); // DEBUG
         
         const row = document.createElement('tr');
         row.style.cursor = 'pointer';
         row.style.transition = 'background 0.2s';
         row.innerHTML = `
             <td><a href="${itemUrl}" target="_blank" rel="noopener noreferrer" style="color: #667eea; text-decoration: none; font-weight: 500;" onclick="event.stopPropagation()">${title}</a></td>
-            <td>$${(deal.price || 0).toFixed(2)}</td>
+            <td>$${currentBid.toFixed(2)}</td>
             <td>${timeData.displayText}</td>
             <td>$${(deal.estimatedValue || 0).toFixed(2)}</td>
-            <td style="color: green; font-weight: bold;">$${(deal.profit || 0).toFixed(2)}</td>
-            <td>${(deal.roi || 0).toFixed(1)}%</td>
+            <td style="color: green; font-weight: bold;">$${profit.toFixed(2)}</td>
+            <td>${roi.toFixed(1)}%</td>
             <td>${deal.bidCount || 0}</td>
         `;
         row.addEventListener('click', () => showComparison(deal));
