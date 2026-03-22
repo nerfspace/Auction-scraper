@@ -207,6 +207,53 @@ app.get("/opportunities", async (req, res) => {
 });
 
 // ----------------------
+// /opportunities-bulk → Scan thousands of items
+// ----------------------
+app.get("/opportunities-bulk", async (req, res) => {
+  try {
+    const { query, maxItems = 500 } = req.query;
+
+    if (!query) {
+      return res.status(400).json({ error: "Missing search query" });
+    }
+
+    const maxItemsInt = Math.min(parseInt(maxItems) || 500, 10000); // Cap at 10k
+    console.log(`\n📊 BULK OPPORTUNITIES: scanning up to ${maxItemsInt} items for "${query}"`);
+
+    const auctions = await ebayService.searchAuctionsWithPagination(query, maxItemsInt, 5);
+    console.log(`\n📊 Found ${auctions.length} total items`);
+
+    const withProfit = auctions.map(item => {
+      const profitData = profitCalculator.calculate(item);
+      
+      return {
+        ...item,
+        profit: profitData.profit,
+        roi: profitData.roi,
+        fees: profitData.fees,
+        estimatedValue: profitData.estimatedSelling
+      };
+    });
+
+    const deals = withProfit.filter(item => item.profit > 0);
+    deals.sort((a, b) => b.profit - a.profit);
+
+    console.log(`✅ Found ${deals.length} profitable deals\n`);
+
+    res.json({
+      success: true,
+      total_scanned: auctions.length,
+      opportunities_found: deals.length,
+      data: deals
+    });
+
+  } catch (error) {
+    console.error("BULK OPPORTUNITY ERROR:", error);
+    res.status(500).json({ error: "Failed to analyze opportunities" });
+  }
+});
+
+// ----------------------
 // ANALYTICS ENDPOINTS
 // ----------------------
 app.get("/api/analytics/trends", async (req, res) => {
