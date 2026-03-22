@@ -32,7 +32,6 @@ app.all("/notification", (req, res) => {
   if (challengeCode) {
     console.log("✅ Challenge code received:", challengeCode);
     
-    // Hash: challengeCode + verificationToken + endpoint (in order)
     const hash = crypto.createHash('sha256');
     hash.update(challengeCode);
     hash.update(verificationToken);
@@ -45,7 +44,6 @@ app.all("/notification", (req, res) => {
       challengeResponse: responseHash
     });
   } else {
-    // Normal notification acknowledgment
     res.status(200).json({ statusCode: 200 });
   }
 });
@@ -125,19 +123,36 @@ app.get("/opportunities", async (req, res) => {
 
     // 1. Get auctions
     const auctions = await ebayService.searchAuctions(query);
-    console.log(`OPPORTUNITIES: found ${auctions.length} auctions for "${query}"`);
+    console.log(`\n📊 OPPORTUNITIES: found ${auctions.length} auctions for "${query}"`);
+
+    // DEBUG: Log first item BEFORE profit calculation
+    if (auctions.length > 0) {
+      console.log('🔍 BEFORE PROFIT CALC - First item:');
+      console.log(`   Title: ${auctions[0].title}`);
+      console.log(`   Price: ${auctions[0].price}`);
+      console.log(`   Estimated Value: ${auctions[0].estimatedValue}`);
+    }
 
     // 2. Add profit calculations to each auction
-    const withProfit = auctions.map(item => {
+    const withProfit = auctions.map((item, index) => {
+      console.log(`\n📈 Processing item ${index + 1}:`);
+      console.log(`   Input to profitCalculator - Price: ${item.price}, EstValue: ${item.estimatedValue}`);
+      
       const profitData = profitCalculator.calculate(item);
       
-      return {
+      console.log(`   Output from profitCalculator - Profit: ${profitData.profit}, ROI: ${profitData.roi}`);
+      
+      const result = {
         ...item,
         profit: profitData.profit,
         roi: profitData.roi,
         fees: profitData.fees,
         estimatedValue: profitData.estimatedSelling
       };
+      
+      console.log(`   Final result - Price: ${result.price}, Profit: ${result.profit}, ROI: ${result.roi}`);
+      
+      return result;
     });
 
     // 3. Filter deals with any profit
@@ -146,7 +161,7 @@ app.get("/opportunities", async (req, res) => {
     // 4. Sort best first
     deals.sort((a, b) => b.profit - a.profit);
 
-    console.log(`OPPORTUNITIES: ${deals.length} profitable deals found`);
+    console.log(`\n✅ OPPORTUNITIES: ${deals.length} profitable deals found (out of ${auctions.length} total)\n`);
 
     res.json({
       success: true,
