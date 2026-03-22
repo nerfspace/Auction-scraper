@@ -50,7 +50,7 @@ async function getSoldPriceWithLink(query) {
         }
 
         // Search for SOLD items - get up to 10 to have enough for last 3
-        const response = await fetch(`${EBAY_API_ENDPOINT}?q=${encodeURIComponent(query)}&limit=10&filter=buyingOptions:{AUCTION},itemLocationCountry:US&sort=-soldDate`, {
+                const response = await fetch(`${EBAY_API_ENDPOINT}?q=${encodeURIComponent(query)}&limit=10&filter=buyingOptions:{AUCTION},itemStatus:{SOLD}&sort=-soldDate`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,
