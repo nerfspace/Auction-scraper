@@ -113,7 +113,7 @@ app.get("/scan", async (req, res) => {
 });
 
 // ----------------------
-// /opportunities → filtered profitable deals
+// /opportunities → filtered profitable deals WITH PROFIT CALCULATION
 // ----------------------
 app.get("/opportunities", async (req, res) => {
   try {
@@ -127,26 +127,26 @@ app.get("/opportunities", async (req, res) => {
     const auctions = await ebayService.searchAuctions(query);
     console.log(`OPPORTUNITIES: found ${auctions.length} auctions for "${query}"`);
 
-    // 2. Analyze value
-    const analyzed = await valuationService.analyzeOpportunities(auctions);
-
-    // 3. Add profit calculations
-    const withProfit = analyzed.map(item => {
+    // 2. Add profit calculations to each auction
+    const withProfit = auctions.map(item => {
       const profitData = profitCalculator.calculate(item);
-
+      
       return {
         ...item,
-        ...profitData
+        profit: profitData.profit,
+        roi: profitData.roi,
+        fees: profitData.fees,
+        estimatedValue: profitData.estimatedSelling
       };
     });
 
-      // 4. Filter deals with any profit
-  const deals = withProfit.filter(item =>
-  item.profit > 0  // ← Remove the ROI > 10 requirement
-);
+    // 3. Filter deals with any profit
+    const deals = withProfit.filter(item => item.profit > 0);
 
-    // 5. Sort best first
+    // 4. Sort best first
     deals.sort((a, b) => b.profit - a.profit);
+
+    console.log(`OPPORTUNITIES: ${deals.length} profitable deals found`);
 
     res.json({
       success: true,
