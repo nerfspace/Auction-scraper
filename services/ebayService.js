@@ -49,37 +49,49 @@ async function getSoldPriceWithLink(query) {
             return null;
         }
 
-        // Search for SOLD items - get up to 10 to have enough for last 3
-                const response = await fetch(`${EBAY_API_ENDPOINT}?q=${encodeURIComponent(query)}&limit=10&filter=buyingOptions:{AUCTION},itemStatus:{SOLD}&sort=-soldDate`, {
+        // Use the Search API which has better filtering for sold items
+        const searchUrl = new URL('https://svcs.ebay.com/services/search/FindCompletedItems/v1');
+        searchUrl.searchParams.append('OPERATION-NAME', 'findCompletedItems');
+        searchUrl.searchParams.append('SERVICE-VERSION', '1.0.0');
+        searchUrl.searchParams.append('SECURITY-APPNAME', process.env.EBAY_CLIENT_ID);
+        searchUrl.searchParams.append('RESPONSE-DATA-FORMAT', 'JSON');
+        searchUrl.searchParams.append('REST-PAYLOAD', 'true');
+        searchUrl.searchParams.append('keywords', query);
+        searchUrl.searchParams.append('sortOrder', 'EndTimeSoonest');
+        searchUrl.searchParams.append('pageNumber', '1');
+        searchUrl.searchParams.append('entriesPerPage', '3');
+
+        const response = await fetch(searchUrl.toString(), {
             method: 'GET',
             headers: {
-                'Authorization': `Bearer ${token}`,
-                'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
                 'Content-Type': 'application/json'
             }
         });
 
         if (!response.ok) {
+            console.log('Completed items search failed:', response.status);
             return null;
         }
 
         const data = await response.json();
         
-        if (!data.itemSummaries || data.itemSummaries.length === 0) {
+        if (!data.searchResult || data.searchResult[0].count === 0) {
+            console.log('No completed items found for:', query);
             return null;
         }
 
-        // Get details from sold items
-        const soldItems = data.itemSummaries
-            .filter(item => item.price && item.price.value)
-            .slice(0, 3); // Get last 3 sold items
+        const items = data.searchResult[0].item || [];
+        if (items.length === 0) return null;
 
-        if (soldItems.length === 0) return null;
+        // Get prices from sold items
+        const prices = items
+            .filter(item => item.sellingStatus && item.sellingStatus[0].currentPrice)
+            .map(item => parseFloat(item.sellingStatus[0].currentPrice[0].__value__))
+            .slice(0, 3);
 
-        // Extract prices
-        const prices = soldItems.map(item => parseFloat(item.price.value));
+        if (prices.length === 0) return null;
 
-        // Calculate average if 3+ sold items, otherwise use the first (most recent)
+        // Calculate average if 3+ items, otherwise use first
         let avgPrice;
         if (prices.length >= 3) {
             avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
@@ -87,12 +99,16 @@ async function getSoldPriceWithLink(query) {
             avgPrice = prices[0];
         }
 
-        // Return sold price, link to most recent sold item, and title
+        // Get link to first (most recent) sold item
+        const mostRecentItem = items[0];
+        const itemId = mostRecentItem.itemId[0];
+        const soldLink = `https://www.ebay.com/itm/${itemId}`;
+
         return {
             soldPrice: parseFloat(avgPrice.toFixed(2)),
-            soldLink: soldItems[0].itemWebUrl,
-            soldTitle: soldItems[0].title,
-            numSoldListings: soldItems.length
+            soldLink: soldLink,
+            soldTitle: mostRecentItem.title[0],
+            numSoldListings: items.length
         };
 
     } catch (error) {
@@ -100,7 +116,6 @@ async function getSoldPriceWithLink(query) {
         return null;
     }
 }
-
 async function searchAuctions(query) {
     try {
         const token = await getAuthToken();
