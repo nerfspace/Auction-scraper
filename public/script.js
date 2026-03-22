@@ -27,15 +27,15 @@ function scanCategory() {
     const categorySelect = document.getElementById('categorySelect');
     const category = categorySelect.value.trim();
     
-    console.log('Category selected:', category); // Debug log
+    console.log('Category selected:', category);
     
     if (!category) {
         showError('Please select a category first');
-        categorySelect.focus(); // Focus on dropdown to highlight
+        categorySelect.focus();
         return;
     }
 
-    console.log('Starting scan for:', category); // Debug log
+    console.log('Starting scan for:', category);
     document.getElementById('searchInput').value = category;
     performSearch(category);
 }
@@ -121,8 +121,8 @@ function displayResults(deals) {
         const itemUrl = deal.itemUrl || '#';
         const title = deal.title || 'Unknown Item';
         
-        const row = `<tr>
-            <td><a href="${itemUrl}" target="_blank" rel="noopener noreferrer" style="color: #667eea; text-decoration: none; font-weight: 500; cursor: pointer;">${title}</a></td>
+        const row = `<tr onclick="showComparison(${JSON.stringify(deal).replace(/"/g, '&quot;')})" style="cursor: pointer; transition: background 0.2s;">
+            <td><a href="${itemUrl}" target="_blank" rel="noopener noreferrer" style="color: #667eea; text-decoration: none; font-weight: 500; cursor: pointer;" onclick="event.stopPropagation()">${title}</a></td>
             <td>$${(deal.price || 0).toFixed(2)}</td>
             <td>$${(deal.estimatedValue || 0).toFixed(2)}</td>
             <td style="color: green; font-weight: bold;">$${(deal.profit || 0).toFixed(2)}</td>
@@ -145,6 +145,7 @@ function hideAllResults() {
     document.getElementById('stats').classList.add('hidden');
     document.getElementById('error').classList.add('hidden');
     document.getElementById('noResults').classList.add('hidden');
+    document.getElementById('comparison').classList.add('hidden');
 }
 
 function showError(message) {
@@ -160,6 +161,8 @@ function handleEnter(event) {
     if (event.key === 'Enter') {
         searchAuctions();
     }
+}
+
 function showComparison(deal) {
     // Populate current auction info
     document.getElementById('compCurrentTitle').textContent = deal.title;
@@ -181,7 +184,6 @@ function showComparison(deal) {
     const soldLinkContainer = document.getElementById('compSoldLink');
     if (deal.soldLink) {
         if (!soldLinkContainer) {
-            // Create the element if it doesn't exist
             const newP = document.createElement('p');
             newP.id = 'compSoldLink';
             newP.innerHTML = `<strong>Last Sold:</strong> <a href="${deal.soldLink}" target="_blank" style="color: #667eea; text-decoration: none; font-weight: 600;">View Sold Listing →</a>`;
@@ -196,30 +198,4 @@ function showComparison(deal) {
     
     // Scroll to comparison
     document.getElementById('comparison').scrollIntoView({ behavior: 'smooth' });
-}
-}
-
-// Update displayResults to add click handlers
-function displayResults(deals) {
-    const tbody = document.getElementById('resultsTable');
-    tbody.innerHTML = '';
-
-    deals.forEach(deal => {
-        const itemUrl = deal.itemUrl || '#';
-        const title = deal.title || 'Unknown Item';
-        
-        const row = `<tr onclick="showComparison(${JSON.stringify(deal).replace(/"/g, '&quot;')})" style="cursor: pointer; transition: background 0.2s;">
-            <td><a href="${itemUrl}" target="_blank" rel="noopener noreferrer" style="color: #667eea; text-decoration: none; font-weight: 500; cursor: pointer;" onclick="event.stopPropagation()">${title}</a></td>
-            <td>$${(deal.price || 0).toFixed(2)}</td>
-            <td>$${(deal.estimatedValue || 0).toFixed(2)}</td>
-            <td style="color: green; font-weight: bold;">$${(deal.profit || 0).toFixed(2)}</td>
-            <td>${(deal.roi || 0).toFixed(1)}%</td>
-            <td>${deal.condition || 'Unknown'}</td>
-            <td>${deal.bidCount || 0}</td>
-        </tr>`;
-        tbody.innerHTML += row;
-    });
-
-    document.getElementById('results').classList.remove('hidden');
-}
 }
