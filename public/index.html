@@ -20,23 +20,44 @@
                 placeholder="Search for items (e.g., iPhone, laptop, gaming console)"
                 onkeypress="handleEnter(event)"
             >
-        <div class="category-section">
-            <h3>📂 Quick Category Scan</h3>
-            <select id="categorySelect">
-                <option value="">-- Select a Category --</option>
-                <option value="Electronics">Electronics</option>
-                <option value="Fashion">Fashion</option>
-                <option value="Home & Garden">Home & Garden</option>
-                <option value="Sports">Sports</option>
-                <option value="Collectibles">Collectibles</option>
-                <option value="Toys">Toys</option>
-                <option value="Books">Books</option>
-            </select>
-            <button onclick="scanCategory()">Scan Category</button>
+            <button onclick="searchAuctions()">Search Deals</button>
         </div>
 
-            
-            <button onclick="searchAuctions()">Search Deals</button>
+        <div class="category-section">
+            <h3>📂 Quick Category Scan</h3>
+            <div>
+                <select id="categorySelect">
+                    <option value="">-- Select a Category --</option>
+                    <option value="Electronics">Electronics</option>
+                    <option value="Fashion">Fashion</option>
+                    <option value="Home & Garden">Home & Garden</option>
+                    <option value="Sports">Sports</option>
+                    <option value="Collectibles">Collectibles</option>
+                    <option value="Toys">Toys</option>
+                    <option value="Books">Books</option>
+                </select>
+                <button onclick="scanCategory()">Scan Category</button>
+            </div>
+        </div>
+
+        <div class="profit-filter">
+            <h3>💰 Search by Profit Target</h3>
+            <div class="profit-buttons">
+                <button onclick="searchByProfit(25)" class="profit-btn">$25+</button>
+                <button onclick="searchByProfit(50)" class="profit-btn">$50+</button>
+                <button onclick="searchByProfit(100)" class="profit-btn">$100+</button>
+                <button onclick="searchByProfit(500)" class="profit-btn">$500+</button>
+            </div>
+        </div>
+
+        <div class="margin-adjuster">
+            <h3>⚙️ Adjust Profit Threshold</h3>
+            <div class="slider-container">
+                <label for="profitSlider">Minimum Profit:</label>
+                <input type="range" id="profitSlider" min="0" max="500" value="5" step="5">
+                <span id="profitValue">$5</span>
+            </div>
+            <button onclick="applyProfitThreshold()">Apply Filter</button>
         </div>
 
         <div id="loadingSpinner" class="spinner hidden"></div>
