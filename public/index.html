@@ -58,6 +58,21 @@
             </div>
             <button id="btn-apply-profit-threshold">Apply Filter</button>
         </div>
+
+                <div class="bid-filter">
+            <h3>💵 Filter by Current Bid</h3>
+            <div class="slider-container">
+                <label for="maxBidSlider">Maximum Bid:</label>
+                <input type="range" id="maxBidSlider" min="0" max="1000" value="500" step="10">
+                <span id="maxBidValue">$500</span>
+            </div>
+            <div class="slider-container">
+                <label for="minBidSlider">Minimum Bid:</label>
+                <input type="range" id="minBidSlider" min="0" max="1000" value="0" step="10">
+                <span id="minBidValue">$0</span>
+            </div>
+            <button id="btn-apply-bid-filter">Apply Bid Filter</button>
+        </div>
         
         <div class="time-filter">
             <h3>⏰ Filter by Time Remaining</h3>
