@@ -1,6 +1,6 @@
 let currentMinProfit = 5;
 let allDeals = [];
-
+let currentTimeFilter = 'all';
 // Update slider display
 document.addEventListener('DOMContentLoaded', function() {
     const slider = document.getElementById('profitSlider');
@@ -89,7 +89,9 @@ async function performSearch(query) {
         allDeals = data.data;
 
         // Filter by current minimum profit
-        const filteredDeals = allDeals.filter(deal => deal.profit >= currentMinProfit);
+                const filteredDeals = allDeals.filter(deal => 
+            deal.profit >= currentMinProfit && isWithinTimeFrame(deal.itemEndDate)
+        );
 
         if (filteredDeals.length === 0) {
             showNoResults();
@@ -97,20 +99,27 @@ async function performSearch(query) {
         }
 
         displayStats(data.total_scanned, filteredDeals.length, filteredDeals);
-        displayResults(filteredDeals);
+      function displayResults(deals) {
+    const tbody = document.getElementById('resultsTable');
+    tbody.innerHTML = '';
 
-    } catch (error) {
-        showSpinner(false);
-        showError('Error: ' + error.message);
-    }
-}
+    deals.forEach(deal => {
+        const itemUrl = deal.itemUrl || '#';
+        const title = deal.title || 'Unknown Item';
+        
+        const row = `<tr onclick="showComparison(${JSON.stringify(deal).replace(/"/g, '&quot;')})" style="cursor: pointer; transition: background 0.2s;">
+            <td><a href="${itemUrl}" target="_blank" rel="noopener noreferrer" style="color: #667eea; text-decoration: none; font-weight: 500; cursor: pointer;" onclick="event.stopPropagation()">${title}</a></td>
+            <td>$${(deal.price || 0).toFixed(2)}</td>
+            <td>${deal.timeRemaining}</td>
+            <td>$${(deal.estimatedValue || 0).toFixed(2)}</td>
+            <td style="color: green; font-weight: bold;">$${(deal.profit || 0).toFixed(2)}</td>
+            <td>${(deal.roi || 0).toFixed(1)}%</td>
+            <td>${deal.bidCount || 0}</td>
+        </tr>`;
+        tbody.innerHTML += row;
+    });
 
-function displayStats(scanned, deals, data) {
-    const bestProfit = data.length > 0 ? Math.max(...data.map(d => d.profit)) : 0;
-    document.getElementById('scannedCount').textContent = scanned;
-    document.getElementById('dealsCount').textContent = deals;
-    document.getElementById('bestProfit').textContent = '$' + bestProfit.toFixed(2);
-    document.getElementById('stats').classList.remove('hidden');
+    document.getElementById('results').classList.remove('hidden');
 }
 
 function displayResults(deals) {
