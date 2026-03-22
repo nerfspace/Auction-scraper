@@ -124,6 +124,13 @@ async function searchAuctions(query) {
         return itemsWithPrices.map(({ item, itemSoldPrice }) => {
             const soldPrice = itemSoldPrice;
 
+            // Log item price fields to help debug API response structure
+            console.log(`[eBay] Item: "${item.title?.substring(0, 50)}" | currentBidPrice: ${JSON.stringify(item.currentBidPrice)} | price: ${JSON.stringify(item.price)} | bidCount: ${item.bidCount}`);
+
+            // eBay Browse API returns currentBidPrice for active auction bids;
+            // fall back to price (starting bid / buy-it-now) if no bids yet
+            const currentBidValue = parseFloat(item.currentBidPrice?.value) || parseFloat(item.price?.value) || 0;
+
             // Calculate time remaining
             let timeRemaining = 'Unknown';
             if (item.itemEndDate) {
@@ -147,12 +154,12 @@ async function searchAuctions(query) {
 
             return {
                 title: item.title,
-                price: parseFloat(item.price?.value) || 0,
+                price: currentBidValue,
                 condition: item.condition || 'Unknown',
                 itemUrl: item.itemWebUrl,
                 itemId: item.itemId,
                 bidCount: item.bidCount || 0,
-                estimatedValue: soldPrice || (parseFloat(item.price?.value) * 1.2) || 0,
+                estimatedValue: soldPrice || (currentBidValue * 1.2) || 0,
                 timeRemaining: timeRemaining,
                 itemEndDate: item.itemEndDate,
                 soldLink: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(item.title)}&LH_ItemCondition=3000&LH_Sold=1&LH_Complete=1&sort=asc&rt=nc`
