@@ -7,17 +7,62 @@ app.use(express.json());
 app.use(express.static('public'));
 app.use(express.text());
 
-// Import services
+// Import core services (required)
 const ebayService = require("./services/ebayService");
 const valuationService = require("./services/valuationService");
 const profitCalculator = require("./utils/profitCalculator");
-const analyticsService = require("./services/analyticsService");
-const catalogService = require("./services/catalogService");
-const pricingService = require("./services/pricingService");
-const listingService = require("./services/listingService");
-const inventoryService = require("./services/inventoryService");
-const shippingService = require("./services/shippingService");
-const returnsService = require("./services/returnsService");
+
+// Import optional services with error handling
+let analyticsService, catalogService, pricingService, listingService, inventoryService, shippingService, returnsService;
+
+try {
+  analyticsService = require("./services/analyticsService");
+} catch (e) {
+  console.warn('⚠️ Analytics service not available');
+  analyticsService = null;
+}
+
+try {
+  catalogService = require("./services/catalogService");
+} catch (e) {
+  console.warn('⚠️ Catalog service not available');
+  catalogService = null;
+}
+
+try {
+  pricingService = require("./services/pricingService");
+} catch (e) {
+  console.warn('⚠️ Pricing service not available');
+  pricingService = null;
+}
+
+try {
+  listingService = require("./services/listingService");
+} catch (e) {
+  console.warn('⚠️ Listing service not available');
+  listingService = null;
+}
+
+try {
+  inventoryService = require("./services/inventoryService");
+} catch (e) {
+  console.warn('⚠️ Inventory service not available');
+  inventoryService = null;
+}
+
+try {
+  shippingService = require("./services/shippingService");
+} catch (e) {
+  console.warn('⚠️ Shipping service not available');
+  shippingService = null;
+}
+
+try {
+  returnsService = require("./services/returnsService");
+} catch (e) {
+  console.warn('⚠️ Returns service not available');
+  returnsService = null;
+}
 
 // ----------------------
 // HEALTH CHECK
@@ -27,7 +72,98 @@ app.get("/", (req, res) => {
 });
 
 // ----------------------
-// OPPORTUNITIES ENDPOINT
+// /notification → eBay Marketplace Account Deletion Compliance
+// ----------------------
+app.all("/notification", (req, res) => {
+  console.log("📬 eBay Notification received");
+  
+  const challengeCode = req.query.challenge_code;
+  const endpoint = 'https://auction-scraper-tey5.onrender.com/notification';
+  const verificationToken = 'auction-scraper-ebay-compliance-verification-token-2026';
+  
+  if (challengeCode) {
+    console.log("✅ Challenge code received:", challengeCode);
+    
+    const hash = crypto.createHash('sha256');
+    hash.update(challengeCode);
+    hash.update(verificationToken);
+    hash.update(endpoint);
+    const responseHash = hash.digest('hex');
+    
+    console.log("✅ Sending challenge response:", responseHash);
+    res.set('Content-Type', 'application/json');
+    res.status(200).json({
+      challengeResponse: responseHash
+    });
+  } else {
+    res.status(200).json({ statusCode: 200 });
+  }
+});
+
+// ----------------------
+// /debug-token → Check if OAuth token works
+// ----------------------
+app.get("/debug-token", async (req, res) => {
+  try {
+    const CLIENT_ID = process.env.EBAY_CLIENT_ID;
+    const CLIENT_SECRET = process.env.EBAY_CLIENT_SECRET;
+
+    console.log('CLIENT_ID:', CLIENT_ID ? 'Set ✓' : 'NOT SET ✗');
+    console.log('CLIENT_SECRET:', CLIENT_SECRET ? 'Set ✓' : 'NOT SET ✗');
+
+    const credentials = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64');
+    
+    const response = await fetch('https://api.ebay.com/identity/v1/oauth2/token', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${credentials}`,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: 'grant_type=client_credentials&scope=https://api.ebay.com/oauth/api_scope'
+    });
+
+    const data = await response.json();
+    
+    res.json({
+      status: response.status,
+      hasToken: !!data.access_token,
+      expiresIn: data.expires_in,
+      errorMessage: data.error_description || 'None'
+    });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ----------------------
+// /scan → Raw auction data
+// ----------------------
+app.get("/scan", async (req, res) => {
+  try {
+    const { query } = req.query;
+
+    if (!query) {
+      return res.status(400).json({ error: "Missing search query" });
+    }
+
+    const auctions = await ebayService.searchAuctions(query);
+    console.log(`SCAN: found ${auctions.length} auctions for "${query}"`);
+
+    res.json({
+      success: true,
+      count: auctions.length,
+      data: auctions
+    });
+
+  } catch (error) {
+    console.error("SCAN ERROR:", error);
+    res.status(500).json({ error: "Failed to scan auctions" });
+  }
+});
+
+// ----------------------
+// /opportunities → filtered profitable deals WITH PROFIT CALCULATION
 // ----------------------
 app.get("/opportunities", async (req, res) => {
   try {
@@ -38,7 +174,7 @@ app.get("/opportunities", async (req, res) => {
     }
 
     const auctions = await ebayService.searchAuctions(query);
-    console.log(`OPPORTUNITIES: found ${auctions.length} auctions for "${query}"`);
+    console.log(`\n📊 OPPORTUNITIES: found ${auctions.length} auctions for "${query}"`);
 
     const withProfit = auctions.map(item => {
       const profitData = profitCalculator.calculate(item);
@@ -54,6 +190,8 @@ app.get("/opportunities", async (req, res) => {
 
     const deals = withProfit.filter(item => item.profit > 0);
     deals.sort((a, b) => b.profit - a.profit);
+
+    console.log(`✅ OPPORTUNITIES: ${deals.length} profitable deals found\n`);
 
     res.json({
       success: true,
@@ -72,6 +210,10 @@ app.get("/opportunities", async (req, res) => {
 // ANALYTICS ENDPOINTS
 // ----------------------
 app.get("/api/analytics/trends", async (req, res) => {
+  if (!analyticsService) {
+    return res.status(503).json({ error: "Analytics service not available" });
+  }
+
   try {
     const { keyword, categoryId } = req.query;
 
@@ -96,6 +238,10 @@ app.get("/api/analytics/trends", async (req, res) => {
 // CATALOG ENDPOINTS
 // ----------------------
 app.get("/api/catalog/search", async (req, res) => {
+  if (!catalogService) {
+    return res.status(503).json({ error: "Catalog service not available" });
+  }
+
   try {
     const { q } = req.query;
 
@@ -117,6 +263,10 @@ app.get("/api/catalog/search", async (req, res) => {
 });
 
 app.get("/api/catalog/product/:id", async (req, res) => {
+  if (!catalogService) {
+    return res.status(503).json({ error: "Catalog service not available" });
+  }
+
   try {
     const { id } = req.params;
 
@@ -137,6 +287,10 @@ app.get("/api/catalog/product/:id", async (req, res) => {
 // PRICING ENDPOINTS
 // ----------------------
 app.get("/api/pricing/item/:itemId", async (req, res) => {
+  if (!pricingService) {
+    return res.status(503).json({ error: "Pricing service not available" });
+  }
+
   try {
     const { itemId } = req.params;
 
@@ -154,6 +308,10 @@ app.get("/api/pricing/item/:itemId", async (req, res) => {
 });
 
 app.post("/api/pricing/bulk", async (req, res) => {
+  if (!pricingService) {
+    return res.status(503).json({ error: "Pricing service not available" });
+  }
+
   try {
     const { requests } = req.body;
 
@@ -178,6 +336,10 @@ app.post("/api/pricing/bulk", async (req, res) => {
 // LISTING ENDPOINTS
 // ----------------------
 app.post("/api/listing/create", async (req, res) => {
+  if (!listingService) {
+    return res.status(503).json({ error: "Listing service not available" });
+  }
+
   try {
     const listingData = req.body;
 
@@ -195,6 +357,10 @@ app.post("/api/listing/create", async (req, res) => {
 });
 
 app.put("/api/listing/:itemId", async (req, res) => {
+  if (!listingService) {
+    return res.status(503).json({ error: "Listing service not available" });
+  }
+
   try {
     const { itemId } = req.params;
     const updateData = req.body;
@@ -213,6 +379,10 @@ app.put("/api/listing/:itemId", async (req, res) => {
 });
 
 app.delete("/api/listing/:itemId", async (req, res) => {
+  if (!listingService) {
+    return res.status(503).json({ error: "Listing service not available" });
+  }
+
   try {
     const { itemId } = req.params;
 
@@ -233,6 +403,10 @@ app.delete("/api/listing/:itemId", async (req, res) => {
 // INVENTORY ENDPOINTS
 // ----------------------
 app.get("/api/inventory/:sku", async (req, res) => {
+  if (!inventoryService) {
+    return res.status(503).json({ error: "Inventory service not available" });
+  }
+
   try {
     const { sku } = req.params;
 
@@ -250,6 +424,10 @@ app.get("/api/inventory/:sku", async (req, res) => {
 });
 
 app.post("/api/inventory/:sku", async (req, res) => {
+  if (!inventoryService) {
+    return res.status(503).json({ error: "Inventory service not available" });
+  }
+
   try {
     const { sku } = req.params;
     const itemData = req.body;
@@ -268,6 +446,10 @@ app.post("/api/inventory/:sku", async (req, res) => {
 });
 
 app.put("/api/inventory/:sku/quantity", async (req, res) => {
+  if (!inventoryService) {
+    return res.status(503).json({ error: "Inventory service not available" });
+  }
+
   try {
     const { sku } = req.params;
     const { quantity } = req.body;
@@ -289,6 +471,10 @@ app.put("/api/inventory/:sku/quantity", async (req, res) => {
 // SHIPPING ENDPOINTS
 // ----------------------
 app.get("/api/shipping/order/:orderId", async (req, res) => {
+  if (!shippingService) {
+    return res.status(503).json({ error: "Shipping service not available" });
+  }
+
   try {
     const { orderId } = req.params;
 
@@ -306,6 +492,10 @@ app.get("/api/shipping/order/:orderId", async (req, res) => {
 });
 
 app.post("/api/shipping/order/:orderId/shipment", async (req, res) => {
+  if (!shippingService) {
+    return res.status(503).json({ error: "Shipping service not available" });
+  }
+
   try {
     const { orderId } = req.params;
     const shipmentData = req.body;
@@ -327,6 +517,10 @@ app.post("/api/shipping/order/:orderId/shipment", async (req, res) => {
 // RETURNS ENDPOINTS
 // ----------------------
 app.get("/api/returns", async (req, res) => {
+  if (!returnsService) {
+    return res.status(503).json({ error: "Returns service not available" });
+  }
+
   try {
     const returns = await returnsService.getReturnRequests();
 
@@ -342,6 +536,10 @@ app.get("/api/returns", async (req, res) => {
 });
 
 app.post("/api/returns/:returnId/approve", async (req, res) => {
+  if (!returnsService) {
+    return res.status(503).json({ error: "Returns service not available" });
+  }
+
   try {
     const { returnId } = req.params;
     const approvalData = req.body;
@@ -360,6 +558,10 @@ app.post("/api/returns/:returnId/approve", async (req, res) => {
 });
 
 app.post("/api/returns/:returnId/refund", async (req, res) => {
+  if (!returnsService) {
+    return res.status(503).json({ error: "Returns service not available" });
+  }
+
   try {
     const { returnId } = req.params;
     const refundData = req.body;
@@ -380,5 +582,7 @@ app.post("/api/returns/:returnId/refund", async (req, res) => {
 // ----------------------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📊 Core services: ✓ eBay Search, ✓ Valuation, ✓ Profit Calculator`);
+  console.log(`📈 Optional services: ${analyticsService ? '✓' : '✗'} Analytics, ${catalogService ? '✓' : '✗'} Catalog, ${pricingService ? '✓' : '✗'} Pricing, ${listingService ? '✓' : '✗'} Listing, ${inventoryService ? '✓' : '✗'} Inventory, ${shippingService ? '✓' : '✗'} Shipping, ${returnsService ? '✓' : '✗'} Returns`);
 });
