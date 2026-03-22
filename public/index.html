@@ -76,7 +76,30 @@
                 <p id="bestProfit">$0</p>
             </div>
         </div>
+        <div id="comparison" class="comparison hidden">
+            <h2>📊 Deal vs Last Sold Comparison</h2>
+            <div class="comparison-container">
+                <div class="comparison-card">
+                    <h3>🔴 Current Auction</h3>
+                    <div class="comparison-content">
+                        <p><strong>Title:</strong> <span id="compCurrentTitle"></span></p>
+                        <p><strong>Current Bid:</strong> <span id="compCurrentPrice"></span></p>
+                        <p><strong>Condition:</strong> <span id="compCurrentCondition"></span></p>
+                        <p><strong>Link:</strong> <a id="compCurrentLink" href="#" target="_blank">View on eBay</a></p>
+                    </div>
+                </div>
 
+                <div class="comparison-card">
+                    <h3>🟢 Last Sold Item</h3>
+                    <div class="comparison-content">
+                        <p><strong>Sold Price:</strong> <span id="compSoldPrice"></span></p>
+                        <p><strong>Your Profit:</strong> <span id="compProfit"></span></p>
+                        <p><strong>ROI:</strong> <span id="compROI"></span></p>
+                        <p><strong>Fees:</strong> <span id="compFees"></span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
         <div id="results" class="results hidden">
             <h2>💰 Profitable Opportunities</h2>
             <table>
