@@ -54,10 +54,10 @@
         <div class="profit-filter">
             <h3>💰 Search by Profit Target</h3>
             <div class="profit-buttons">
-                <button onclick="searchByProfit(25)" class="profit-btn">$25+</button>
-                <button onclick="searchByProfit(50)" class="profit-btn">$50+</button>
-                <button onclick="searchByProfit(100)" class="profit-btn">$100+</button>
-                <button onclick="searchByProfit(500)" class="profit-btn">$500+</button>
+                <button class="profit-btn" data-profit="25">$25+</button>
+                <button class="profit-btn" data-profit="50">$50+</button>
+                <button class="profit-btn" data-profit="100">$100+</button>
+                <button class="profit-btn" data-profit="500">$500+</button>
             </div>
         </div>
 
@@ -89,10 +89,11 @@
         <div class="time-filter">
             <h3>⏰ Filter by Time Remaining</h3>
             <div class="time-buttons">
-                <button onclick="filterByTime('nextHour')" class="time-btn">Ending Next Hour</button>
-                <button onclick="filterByTime('today')" class="time-btn">Ending Today</button>
-                <button onclick="filterByTime('thisWeek')" class="time-btn">Ending This Week</button>
-                <button onclick="filterByTime('all')" class="time-btn">All Active</button>
+                <button class="time-btn" data-time="next5mins">⚡ Ends in 5 Mins</button>
+                <button class="time-btn" data-time="nextHour">Ending Next Hour</button>
+                <button class="time-btn" data-time="today">Ending Today</button>
+                <button class="time-btn" data-time="thisWeek">Ending This Week</button>
+                <button class="time-btn" data-time="all">All Active</button>
             </div>
         </div>
         
