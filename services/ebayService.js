@@ -1,6 +1,7 @@
 require('dotenv').config();
 
-const EBAY_API_ENDPOINT = 'https://api.ebay.com/buy/browse/v1/item_summary/search';
+const EBAY_BROWSE_ENDPOINT = 'https://api.ebay.com/buy/browse/v1/item_summary/search';
+const EBAY_SHOPPING_ENDPOINT = 'https://open.api.ebay.com/shopping';
 const CLIENT_ID = process.env.EBAY_CLIENT_ID;
 const CLIENT_SECRET = process.env.EBAY_CLIENT_SECRET;
 
@@ -41,13 +42,49 @@ async function getAuthToken() {
     }
 }
 
+async function getCurrentBidFromShopping(itemId) {
+    try {
+        // Try to get current bid using the Shopping API
+        const response = await fetch(
+            `${EBAY_SHOPPING_ENDPOINT}?callname=GetSingleItem&responseencoding=JSON&appid=${CLIENT_ID}&itemid=${itemId}&IncludeSelector=Details`,
+            {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        if (!response.ok) return null;
+
+        const data = await response.json();
+        
+        if (data.Item?.CurrentPrice?.Value) {
+            const currentBid = parseFloat(data.Item.CurrentPrice.Value);
+            console.log(`✅ Shopping API found current bid: $${currentBid} for item ${itemId}`);
+            return currentBid;
+        }
+
+        if (data.Item?.ConvertedCurrentPrice?.Value) {
+            const currentBid = parseFloat(data.Item.ConvertedCurrentPrice.Value);
+            console.log(`✅ Shopping API found converted price: $${currentBid} for item ${itemId}`);
+            return currentBid;
+        }
+
+        return null;
+
+    } catch (error) {
+        console.warn(`⚠️ Shopping API error for item ${itemId}:`, error.message);
+        return null;
+    }
+}
+
 async function getAverageSoldPrice(itemTitle) {
     try {
         const token = await getAuthToken();
         if (!token) return null;
 
-        // Search for the SPECIFIC item title to get sold prices
-        const response = await fetch(`${EBAY_API_ENDPOINT}?q=${encodeURIComponent(itemTitle)}&limit=10`, {
+        const response = await fetch(`${EBAY_BROWSE_ENDPOINT}?q=${encodeURIComponent(itemTitle)}&limit=10`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -61,19 +98,16 @@ async function getAverageSoldPrice(itemTitle) {
         const data = await response.json();
         if (!data.itemSummaries || data.itemSummaries.length === 0) return null;
 
-        // Get prices from similar active items
         const prices = data.itemSummaries
             .filter(item => item.price && item.price.value)
             .map(item => parseFloat(item.price.value))
-            .slice(0, 5); // Take top 5 prices
+            .slice(0, 5);
 
         if (prices.length === 0) return null;
 
-        // Calculate median price
         prices.sort((a, b) => a - b);
         const median = prices[Math.floor(prices.length / 2)];
         
-        // Return 1.2x median as estimated sold value
         return parseFloat((median * 1.2).toFixed(2));
 
     } catch (error) {
@@ -91,15 +125,19 @@ async function searchAuctions(query) {
             return [];
         }
 
-        // Search active auctions only
-        const response = await fetch(`${EBAY_API_ENDPOINT}?q=${encodeURIComponent(query)}&limit=20&filter=buyingOptions:{AUCTION}`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
-                'Content-Type': 'application/json'
+        console.log(`\n🔍 Searching eBay for: "${query}"`);
+        
+        const response = await fetch(
+            `${EBAY_BROWSE_ENDPOINT}?q=${encodeURIComponent(query)}&limit=20&filter=buyingOptions:{AUCTION}`,
+            {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
+                    'Content-Type': 'application/json'
+                }
             }
-        });
+        );
 
         if (!response.ok) {
             console.error('eBay API Error:', response.status, response.statusText);
@@ -113,16 +151,35 @@ async function searchAuctions(query) {
             return [];
         }
 
-        // For each item, get sold price based on that specific item's title
+        console.log(`📦 Found ${data.itemSummaries.length} auction items. Fetching detailed bid data...`);
+
+        // For each item, get sold price AND current bid
         const promises = data.itemSummaries.map(async (item) => {
             const itemSoldPrice = await getAverageSoldPrice(item.title);
-            return { item, itemSoldPrice };
+            // ✅ Get the actual current bid from Shopping API
+            const currentBid = await getCurrentBidFromShopping(item.itemId);
+            return { item, itemSoldPrice, currentBid };
         });
         
         const itemsWithPrices = await Promise.all(promises);
 
-        return itemsWithPrices.map(({ item, itemSoldPrice }) => {
-            const soldPrice = itemSoldPrice;
+        return itemsWithPrices.map(({ item, itemSoldPrice, currentBid }) => {
+            // ✅ Use current bid if available, otherwise use Browse API price
+            let finalPrice = 0;
+
+            if (currentBid && currentBid > 0) {
+                // Shopping API gave us the real current bid
+                finalPrice = currentBid;
+                console.log(`💰 Using Shopping API current bid: $${finalPrice}`);
+            } else if (item.price?.value && parseFloat(item.price.value) > 0) {
+                // Fallback to Browse API price
+                finalPrice = parseFloat(item.price.value);
+                console.log(`📊 Browse API price: $${finalPrice}`);
+            } else {
+                // Last resort: estimate from bid count
+                finalPrice = 0;
+                console.log(`❌ No price data for: ${item.title.substring(0, 40)}...`);
+            }
 
             // Calculate time remaining
             let timeRemaining = 'Unknown';
@@ -147,12 +204,12 @@ async function searchAuctions(query) {
 
             return {
                 title: item.title,
-                price: parseFloat(item.price?.value) || 0,
+                price: finalPrice,  // ✅ NOW USING CURRENT BID FROM SHOPPING API
                 condition: item.condition || 'Unknown',
                 itemUrl: item.itemWebUrl,
                 itemId: item.itemId,
                 bidCount: item.bidCount || 0,
-                estimatedValue: soldPrice || (parseFloat(item.price?.value) * 1.2) || 0,
+                estimatedValue: itemSoldPrice || (finalPrice * 1.5) || 0,
                 timeRemaining: timeRemaining,
                 itemEndDate: item.itemEndDate,
                 soldLink: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(item.title)}&LH_ItemCondition=3000&LH_Sold=1&LH_Complete=1&sort=asc&rt=nc`
