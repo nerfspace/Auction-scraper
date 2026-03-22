@@ -1,7 +1,6 @@
 require('dotenv').config();
 
 const EBAY_API_ENDPOINT = 'https://api.ebay.com/buy/browse/v1/item_summary/search';
-const EBAY_SOLD_ENDPOINT = 'https://api.ebay.com/buy/browse/v1/item_summary/search';
 const CLIENT_ID = process.env.EBAY_CLIENT_ID;
 const CLIENT_SECRET = process.env.EBAY_CLIENT_SECRET;
 
@@ -42,7 +41,7 @@ async function getAuthToken() {
     }
 }
 
-async function getSoldPrice(query) {
+async function getSoldPriceWithLink(query) {
     try {
         const token = await getAuthToken();
         
@@ -50,8 +49,8 @@ async function getSoldPrice(query) {
             return null;
         }
 
-        // Search for SOLD items only - get up to 10 to have enough for last 3
-        const response = await fetch(`${EBAY_SOLD_ENDPOINT}?q=${encodeURIComponent(query)}&limit=10&filter=buyingOptions:{AUCTION},itemLocationCountry:US&sort=-soldDate`, {
+        // Search for SOLD items - get up to 10 to have enough for last 3
+        const response = await fetch(`${EBAY_API_ENDPOINT}?q=${encodeURIComponent(query)}&limit=10&filter=buyingOptions:{AUCTION},itemLocationCountry:US&sort=-soldDate`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -70,22 +69,31 @@ async function getSoldPrice(query) {
             return null;
         }
 
-        // Get prices from sold items
-        const prices = data.itemSummaries
+        // Get details from sold items
+        const soldItems = data.itemSummaries
             .filter(item => item.price && item.price.value)
-            .map(item => parseFloat(item.price.value))
             .slice(0, 3); // Get last 3 sold items
 
-        if (prices.length === 0) return null;
+        if (soldItems.length === 0) return null;
 
-        // If 3 or more sold items, average them. Otherwise use the single sold price
+        // Extract prices
+        const prices = soldItems.map(item => parseFloat(item.price.value));
+
+        // Calculate average if 3+ sold items, otherwise use the first (most recent)
+        let avgPrice;
         if (prices.length >= 3) {
-            const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
-            return parseFloat(avgPrice.toFixed(2));
+            avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
         } else {
-            // Less than 3 sold - use the most recent sold price
-            return prices[0];
+            avgPrice = prices[0];
         }
+
+        // Return sold price, link to most recent sold item, and title
+        return {
+            soldPrice: parseFloat(avgPrice.toFixed(2)),
+            soldLink: soldItems[0].itemWebUrl,
+            soldTitle: soldItems[0].title,
+            numSoldListings: soldItems.length
+        };
 
     } catch (error) {
         console.error('Error getting sold price:', error);
@@ -123,8 +131,8 @@ async function searchAuctions(query) {
             return [];
         }
 
-        // Get sold price for this item type
-        const soldPrice = await getSoldPrice(query);
+        // Get sold price and link for this item type
+        const soldData = await getSoldPriceWithLink(query);
 
         return data.itemSummaries.map(item => ({
             title: item.title,
@@ -133,7 +141,10 @@ async function searchAuctions(query) {
             itemUrl: item.itemWebUrl,
             itemId: item.itemId,
             bidCount: item.bidCount || 0,
-            estimatedValue: soldPrice || (parseFloat(item.price?.value) * 1.2) || 0
+            estimatedValue: soldData?.soldPrice || (parseFloat(item.price?.value) * 1.2) || 0,
+            soldLink: soldData?.soldLink || null,
+            soldTitle: soldData?.soldTitle || null,
+            numSoldListings: soldData?.numSoldListings || 0
         }));
 
     } catch (error) {
