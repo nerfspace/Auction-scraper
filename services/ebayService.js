@@ -113,6 +113,28 @@ async function searchAuctions(query) {
         // Get estimated sold price
         const soldPrice = await getAverageSoldPrice(query);
 
+        return data.itemSummaries.map(item => {
+            // Calculate time remaining
+            let timeRemaining = 'Unknown';
+            if (item.itemEndDate) {
+                const endTime = new Date(item.itemEndDate);
+                const now = new Date();
+                const diff = endTime - now;
+                
+                if (diff > 0) {
+                    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    
+                    if (days > 0) {
+                        timeRemaining = `${days}d ${hours}h`;
+                    } else {
+                        timeRemaining = `${hours}h`;
+                    }
+                } else {
+                    timeRemaining = 'Ended';
+                }
+            }
+
             return {
                 title: item.title,
                 price: parseFloat(item.price?.value) || 0,
@@ -124,18 +146,6 @@ async function searchAuctions(query) {
                 timeRemaining: timeRemaining,
                 itemEndDate: item.itemEndDate,
                 soldLink: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(query)}&LH_ItemCondition=3000&LH_Sold=1&LH_Complete=1&sort=asc&rt=nc`
-            };
-
-            return {
-                title: item.title,
-                price: parseFloat(item.price?.value) || 0,
-                condition: item.condition || 'Unknown',
-                itemUrl: item.itemWebUrl,
-                itemId: item.itemId,
-                bidCount: item.bidCount || 0,
-                estimatedValue: soldPrice || (parseFloat(item.price?.value) * 1.3) || 0,
-                timeRemaining: timeRemaining,
-                itemEndDate: item.itemEndDate
             };
         });
 
