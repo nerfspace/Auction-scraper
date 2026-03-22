@@ -431,6 +431,8 @@ tbody tr:nth-child(even) {
     .comparison-container {
         grid-template-columns: 1fr;
     }
+}
+
 .time-filter {
     background: #f0f9ff;
     padding: 20px;
@@ -464,6 +466,4 @@ tbody tr:nth-child(even) {
 .time-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(0, 188, 212, 0.4);
-}
-
 }
