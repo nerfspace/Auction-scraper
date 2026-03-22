@@ -66,13 +66,51 @@ function applyProfitThreshold() {
     performSearch(query);
 }
 
+function filterByTime(timeFrame) {
+    currentTimeFilter = timeFrame;
+
+    const query = document.getElementById('searchInput').value.trim();
+
+    if (!query) {
+        showError('Please enter a search term first');
+        return;
+    }
+
+    performSearch(query);
+}
+
+function isWithinTimeFrame(endDate) {
+    if (!endDate) return currentTimeFilter === 'all';
+
+    const now = new Date();
+    const end = new Date(endDate);
+    const diffMs = end - now;
+    const diffHours = diffMs / (1000 * 60 * 60);
+    const diffDays = diffHours / 24;
+
+    switch (currentTimeFilter) {
+        case 'nextHour':
+            return diffHours > 0 && diffHours <= 1;
+        case 'today':
+            return diffHours > 0 && diffDays <= 1;
+        case 'thisWeek':
+            return diffHours > 0 && diffDays <= 7;
+        case 'all':
+            return diffHours > 0;
+        default:
+            return diffHours > 0;
+    }
+}
+
 async function performSearch(query) {
     showSpinner(true);
     hideAllResults();
 
     try {
+        console.log('Searching for:', query);
         const response = await fetch(`/opportunities?query=${encodeURIComponent(query)}`);
         const data = await response.json();
+        console.log('API response:', data);
         showSpinner(false);
 
         if (!data.success) {
@@ -88,8 +126,8 @@ async function performSearch(query) {
         // Store all deals
         allDeals = data.data;
 
-        // Filter by current minimum profit
-                const filteredDeals = allDeals.filter(deal => 
+        // Filter by current minimum profit AND time frame
+        const filteredDeals = allDeals.filter(deal =>
             deal.profit >= currentMinProfit && isWithinTimeFrame(deal.itemEndDate)
         );
 
@@ -99,27 +137,22 @@ async function performSearch(query) {
         }
 
         displayStats(data.total_scanned, filteredDeals.length, filteredDeals);
-      function displayResults(deals) {
-    const tbody = document.getElementById('resultsTable');
-    tbody.innerHTML = '';
+        displayResults(filteredDeals);
+    } catch (error) {
+        console.error('Search error:', error);
+        showSpinner(false);
+        showError('An error occurred. Please try again.');
+    }
+}
 
-    deals.forEach(deal => {
-        const itemUrl = deal.itemUrl || '#';
-        const title = deal.title || 'Unknown Item';
-        
-        const row = `<tr onclick="showComparison(${JSON.stringify(deal).replace(/"/g, '&quot;')})" style="cursor: pointer; transition: background 0.2s;">
-            <td><a href="${itemUrl}" target="_blank" rel="noopener noreferrer" style="color: #667eea; text-decoration: none; font-weight: 500; cursor: pointer;" onclick="event.stopPropagation()">${title}</a></td>
-            <td>$${(deal.price || 0).toFixed(2)}</td>
-            <td>${deal.timeRemaining}</td>
-            <td>$${(deal.estimatedValue || 0).toFixed(2)}</td>
-            <td style="color: green; font-weight: bold;">$${(deal.profit || 0).toFixed(2)}</td>
-            <td>${(deal.roi || 0).toFixed(1)}%</td>
-            <td>${deal.bidCount || 0}</td>
-        </tr>`;
-        tbody.innerHTML += row;
-    });
+function displayStats(scanned, deals, dealData) {
+    document.getElementById('scannedCount').textContent = scanned;
+    document.getElementById('dealsCount').textContent = deals;
 
-    document.getElementById('results').classList.remove('hidden');
+    const bestProfit = dealData.reduce((max, deal) => Math.max(max, deal.profit || 0), 0);
+    document.getElementById('bestProfit').textContent = '$' + bestProfit.toFixed(2);
+
+    document.getElementById('stats').classList.remove('hidden');
 }
 
 function displayResults(deals) {
@@ -129,16 +162,15 @@ function displayResults(deals) {
     deals.forEach(deal => {
         const itemUrl = deal.itemUrl || '#';
         const title = deal.title || 'Unknown Item';
-        
+
         const row = `<tr onclick="showComparison(${JSON.stringify(deal).replace(/"/g, '&quot;')})" style="cursor: pointer; transition: background 0.2s;">
             <td><a href="${itemUrl}" target="_blank" rel="noopener noreferrer" style="color: #667eea; text-decoration: none; font-weight: 500; cursor: pointer;" onclick="event.stopPropagation()">${title}</a></td>
             <td>$${(deal.price || 0).toFixed(2)}</td>
+            <td>${deal.timeRemaining || 'Unknown'}</td>
             <td>$${(deal.estimatedValue || 0).toFixed(2)}</td>
             <td style="color: green; font-weight: bold;">$${(deal.profit || 0).toFixed(2)}</td>
             <td>${(deal.roi || 0).toFixed(1)}%</td>
-            <td>${deal.condition || 'Unknown'}</td>
             <td>${deal.bidCount || 0}</td>
-            <td>${deal.timeRemaining}</td>
         </tr>`;
         tbody.innerHTML += row;
     });

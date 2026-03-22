@@ -98,6 +98,7 @@ app.get("/scan", async (req, res) => {
     }
 
     const auctions = await ebayService.searchAuctions(query);
+    console.log(`SCAN: found ${auctions.length} auctions for "${query}"`);
 
     res.json({
       success: true,
@@ -124,6 +125,7 @@ app.get("/opportunities", async (req, res) => {
 
     // 1. Get auctions
     const auctions = await ebayService.searchAuctions(query);
+    console.log(`OPPORTUNITIES: found ${auctions.length} auctions for "${query}"`);
 
     // 2. Analyze value
     const analyzed = await valuationService.analyzeOpportunities(auctions);
