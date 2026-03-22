@@ -50,8 +50,8 @@ async function getSoldPrice(query) {
             return null;
         }
 
-        // Search for SOLD items only
-        const response = await fetch(`${EBAY_SOLD_ENDPOINT}?q=${encodeURIComponent(query)}&limit=5&filter=buyingOptions:{AUCTION},itemLocationCountry:US&sort=-soldDate`, {
+        // Search for SOLD items only - get up to 10 to have enough for last 3
+        const response = await fetch(`${EBAY_SOLD_ENDPOINT}?q=${encodeURIComponent(query)}&limit=10&filter=buyingOptions:{AUCTION},itemLocationCountry:US&sort=-soldDate`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -70,15 +70,22 @@ async function getSoldPrice(query) {
             return null;
         }
 
-        // Calculate average price of sold items
+        // Get prices from sold items
         const prices = data.itemSummaries
             .filter(item => item.price && item.price.value)
-            .map(item => parseFloat(item.price.value));
+            .map(item => parseFloat(item.price.value))
+            .slice(0, 3); // Get last 3 sold items
 
         if (prices.length === 0) return null;
 
-        const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
-        return parseFloat(avgPrice.toFixed(2));
+        // If 3 or more sold items, average them. Otherwise use the single sold price
+        if (prices.length >= 3) {
+            const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
+            return parseFloat(avgPrice.toFixed(2));
+        } else {
+            // Less than 3 sold - use the most recent sold price
+            return prices[0];
+        }
 
     } catch (error) {
         console.error('Error getting sold price:', error);
