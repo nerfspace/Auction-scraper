@@ -59,7 +59,15 @@
             </div>
             <button onclick="applyProfitThreshold()">Apply Filter</button>
         </div>
-
+        <div class="time-filter">
+            <h3>⏰ Filter by Time Remaining</h3>
+            <div class="time-buttons">
+                <button onclick="filterByTime('nextHour')" class="time-btn">Ending Next Hour</button>
+                <button onclick="filterByTime('today')" class="time-btn">Ending Today</button>
+                <button onclick="filterByTime('thisWeek')" class="time-btn">Ending This Week</button>
+                <button onclick="filterByTime('all')" class="time-btn">All Active</button>
+            </div>
+        </div>
         <div id="loadingSpinner" class="spinner hidden"></div>
 
         <div id="stats" class="stats hidden">
@@ -104,14 +112,13 @@
             <h2>💰 Profitable Opportunities</h2>
             <table>
                 <thead>
-                    <tr>
+                                       <tr>
                         <th>Item Title</th>
                         <th>Current Bid</th>
                         <th>Time Left</th>
                         <th>Est. Value</th>
                         <th>Profit</th>
                         <th>ROI %</th>
-                        <th>Condition</th>
                         <th>Bids</th>
                     </tr>
                 </thead>
