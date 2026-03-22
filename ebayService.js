@@ -46,7 +46,6 @@ async function getAverageSoldPrice(itemTitle) {
         const token = await getAuthToken();
         if (!token) return null;
 
-        // Search for the SPECIFIC item title to get sold prices
         const response = await fetch(`${EBAY_API_ENDPOINT}?q=${encodeURIComponent(itemTitle)}&limit=10`, {
             method: 'GET',
             headers: {
@@ -61,25 +60,68 @@ async function getAverageSoldPrice(itemTitle) {
         const data = await response.json();
         if (!data.itemSummaries || data.itemSummaries.length === 0) return null;
 
-        // Get prices from similar active items
         const prices = data.itemSummaries
             .filter(item => item.price && item.price.value)
             .map(item => parseFloat(item.price.value))
-            .slice(0, 5); // Take top 5 prices
+            .slice(0, 5);
 
         if (prices.length === 0) return null;
 
-        // Calculate median price
         prices.sort((a, b) => a - b);
         const median = prices[Math.floor(prices.length / 2)];
         
-        // Return 1.2x median as estimated sold value
         return parseFloat((median * 1.2).toFixed(2));
 
     } catch (error) {
         console.error('Error getting average sold price:', error);
         return null;
     }
+}
+
+function extractCurrentBid(item) {
+    // eBay API can return price in different places depending on listing type
+    // Try multiple approaches to extract the current bid
+    
+    let currentBid = 0;
+
+    // Approach 1: item.price.value (standard format)
+    if (item.price?.value) {
+        currentBid = parseFloat(item.price.value);
+        console.log(`✅ Extracted price from item.price.value: ${currentBid}`);
+        return currentBid;
+    }
+
+    // Approach 2: item.currentBidPrice (auction format)
+    if (item.currentBidPrice?.value) {
+        currentBid = parseFloat(item.currentBidPrice.value);
+        console.log(`✅ Extracted price from item.currentBidPrice.value: ${currentBid}`);
+        return currentBid;
+    }
+
+    // Approach 3: item.bidCount exists, try to get from pricingSummary
+    if (item.pricingSummary?.currentBidPrice?.value) {
+        currentBid = parseFloat(item.pricingSummary.currentBidPrice.value);
+        console.log(`✅ Extracted price from item.pricingSummary.currentBidPrice.value: ${currentBid}`);
+        return currentBid;
+    }
+
+    // Approach 4: Check for auctionPrice
+    if (item.auctionPrice) {
+        currentBid = parseFloat(item.auctionPrice);
+        console.log(`✅ Extracted price from item.auctionPrice: ${currentBid}`);
+        return currentBid;
+    }
+
+    console.warn(`⚠️ WARNING: Could not extract current bid for "${item.title}". Price defaulting to 0. Item structure:`, {
+        hasPrice: !!item.price,
+        hasCurrentBidPrice: !!item.currentBidPrice,
+        hasPricingSummary: !!item.pricingSummary,
+        hasAuctionPrice: !!item.auctionPrice,
+        priceValue: item.price?.value,
+        currentBidPriceValue: item.currentBidPrice?.value
+    });
+
+    return currentBid;
 }
 
 async function searchAuctions(query) {
@@ -91,7 +133,6 @@ async function searchAuctions(query) {
             return [];
         }
 
-        // Search active auctions only
         const response = await fetch(`${EBAY_API_ENDPOINT}?q=${encodeURIComponent(query)}&limit=20&filter=buyingOptions:{AUCTION}`, {
             method: 'GET',
             headers: {
@@ -113,7 +154,9 @@ async function searchAuctions(query) {
             return [];
         }
 
-        // For each item, get sold price based on that specific item's title
+        console.log(`\n🔍 DEBUG: Raw eBay API returned ${data.itemSummaries.length} items`);
+        console.log('First raw item structure:', JSON.stringify(data.itemSummaries[0], null, 2));
+
         const promises = data.itemSummaries.map(async (item) => {
             const itemSoldPrice = await getAverageSoldPrice(item.title);
             return { item, itemSoldPrice };
@@ -124,21 +167,9 @@ async function searchAuctions(query) {
         return itemsWithPrices.map(({ item, itemSoldPrice }) => {
             const soldPrice = itemSoldPrice;
             
-            // ✅ FIX: Get the current bid price correctly
-            let currentBid = 0;
-            if (item.price) {
-                if (typeof item.price === 'object' && item.price.value) {
-                    currentBid = parseFloat(item.price.value);
-                } else if (typeof item.price === 'string') {
-                    currentBid = parseFloat(item.price);
-                } else if (typeof item.price === 'number') {
-                    currentBid = item.price;
-                }
-            }
-            
-            console.log(`DEBUG: Item "${item.title}" - Current Bid: ${currentBid}, Sold Price: ${soldPrice}`); // DEBUG LOG
+            // ✅ USE THE NEW EXTRACTION FUNCTION
+            const currentBid = extractCurrentBid(item);
 
-            // Calculate time remaining
             let timeRemaining = 'Unknown';
             if (item.itemEndDate) {
                 const endTime = new Date(item.itemEndDate);
@@ -161,7 +192,7 @@ async function searchAuctions(query) {
 
             return {
                 title: item.title,
-                price: currentBid,  // ✅ NOW USING THE FIXED PRICE
+                price: currentBid,  // ✅ NOW USING EXTRACTED PRICE
                 condition: item.condition || 'Unknown',
                 itemUrl: item.itemWebUrl,
                 itemId: item.itemId,
