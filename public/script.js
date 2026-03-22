@@ -161,7 +161,7 @@ function showComparison(deal) {
     document.getElementById('compCurrentPrice').textContent = '$' + (deal.price || 0).toFixed(2);
     document.getElementById('compCurrentCondition').textContent = deal.condition || 'Unknown';
     
-    // Set the eBay link
+    // Set the eBay link for current auction
     const currentLink = document.getElementById('compCurrentLink');
     currentLink.href = deal.itemUrl || '#';
     currentLink.textContent = 'View on eBay →';
@@ -172,11 +172,26 @@ function showComparison(deal) {
     document.getElementById('compROI').textContent = (deal.roi || 0).toFixed(1) + '%';
     document.getElementById('compFees').textContent = '$' + (deal.fees || 0).toFixed(2);
 
+    // Add sold listing link if available
+    const soldLinkContainer = document.getElementById('compSoldLink');
+    if (deal.soldLink) {
+        if (!soldLinkContainer) {
+            // Create the element if it doesn't exist
+            const newP = document.createElement('p');
+            newP.id = 'compSoldLink';
+            newP.innerHTML = `<strong>Last Sold:</strong> <a href="${deal.soldLink}" target="_blank" style="color: #667eea; text-decoration: none; font-weight: 600;">View Sold Listing →</a>`;
+            document.querySelector('.comparison-card:last-child .comparison-content').appendChild(newP);
+        } else {
+            soldLinkContainer.innerHTML = `<strong>Last Sold:</strong> <a href="${deal.soldLink}" target="_blank" style="color: #667eea; text-decoration: none; font-weight: 600;">View Sold Listing →</a>`;
+        }
+    }
+
     // Show the comparison section
     document.getElementById('comparison').classList.remove('hidden');
     
     // Scroll to comparison
     document.getElementById('comparison').scrollIntoView({ behavior: 'smooth' });
+}
 }
 
 // Update displayResults to add click handlers
